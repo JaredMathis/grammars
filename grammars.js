@@ -1,4 +1,4 @@
-let checkV1 = true;
+let checkV1 = false;
 let grammarsV1 = [
     'v1/addition.g',
     'v1/boolean.g',
@@ -13,6 +13,7 @@ let grammarsV1 = [
 let checkV2 = true;
 let grammarsV2 = [
     'v2/addition.g',
+    'v2/reverse.g',
 ]
 
 const fs = require('fs');

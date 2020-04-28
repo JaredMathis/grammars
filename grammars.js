@@ -1,10 +1,19 @@
-let grammars = [
+let checkV1 = true;
+let grammarsV1 = [
     'v1/addition.g',
-    'v1/subtract.g',
-    'v1/multiply.g',
+    'v1/boolean.g',
+    'v1/comparison.g',
     'v1/multiplication.g',
+    'v1/multiply.g',
+    'v1/parenthesis.g',
     'v1/primes.g',
+    'v1/subtract.g',
 ];
+
+let checkV2 = true;
+let grammarsV2 = [
+    'v2/addition.g',
+]
 
 const fs = require('fs');
 
@@ -287,7 +296,7 @@ throwIfNot(isEqualJson)(isValidProof({ start: 'aa', rules: [{ left: { text: 'a' 
 throwIfNot(isEqualJson)(isValidProof({ start: 'aa', rules: [{ left: { text: 'a' }, right: { text: 'b' } }]}, [{ text: 'a' }]), {"valid":false,"message":"Proof cannot be 1 step"});
 
 function parseGrammar(text, fileName, files, grammar) {
-    let log = true;
+    let log = false;
     let verbose = false;
 
     if (log) console.log('parseGrammar entered ' + JSON.stringify({ fileName }));
@@ -450,7 +459,7 @@ c
 `);
 
 function checkFile(fileName, files, grammar) {
-    let log = true;
+    let log = false;
 
     if (log) 
     console.log('checkFile entered', { 
@@ -464,8 +473,13 @@ function checkFile(fileName, files, grammar) {
     
     parseGrammar(text, fileName, files, grammar);
 }
-
-for (let fileName of grammars) {
-    checkFile(fileName);
+function checkIf(b, list) {
+    if (b) {
+        for (let fileName of list) {
+            checkFile(fileName);
+        }
+    }
 }
 
+checkIf(checkV1, grammarsV1);
+checkIf(checkV2, grammarsV2);

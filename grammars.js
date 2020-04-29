@@ -3,11 +3,13 @@ const fs = require('fs');
 module.exports = {
     checkFile,
     parseGrammar,
+    prove,
 }
 ;
 
 const {
     isArray,
+    isArrayIndex,
     isAtLeast,
     isDefined,
     isEqual,
@@ -408,6 +410,8 @@ function parseGrammar(text, fileName, files, grammar) {
 
         proof = [];
     }
+
+    return grammar;
 }
 
 parseGrammar(`a${ruleToken}b
@@ -449,13 +453,154 @@ function checkFile(fileName, files, grammar) {
     console.log('checkFile entered', { 
         fileName});
 
+    throwIfNot(isString, 'checkFile: fileName needs to be specified')(fileName);
+
     let text = fs.readFileSync(fileName, 'utf8');
 
     if (log) 
     console.log('checkFile calling parseGrammar', { 
         fileName, 'text.length': text.length, files, grammar});
     
-    parseGrammar(text, fileName, files, grammar);
+    grammar = parseGrammar(text, fileName, files, grammar);
+
+    return grammar;
 }
+
+function substituteRule(rule, premise, index) {
+    throwIfNot(isValidRule)(rule);
+    throwIfNot(isString)(premise);
+    throwIfNot(isArrayIndex)(premise, index);
+
+    let result = {
+        success: false,
+    };
+
+    let left = rule.left.text;
+    if (index + left.length > premise.length) {
+        result.message = 'rule too big';
+        return result;
+    }
+
+    let potential = premise.substring(index, index + left.length);
+    if (potential !== left) {
+        result.message = 'rule does not match';
+        return result;
+    }
+
+    result.success = true;
+
+    let before = premise.substring(0, index);
+    let after = premise.substring(index + left.length);
+
+    let right = rule.right.text;
+    result.substituted = before + right + after;
+
+    return result;
+}
+
+(function test() {
+    let rule = {
+        left: {
+            text: 'b',
+        },
+        right: {
+            text: 'dd',
+        }
+    };
+    let result;
+    
+    result = substituteRule(rule, 'abc', 1);
+    throwIfNot(isDefined)(result);
+    throwIfNot(isEqual)(result.success, true);
+    throwIfNot(isEqual)(result.substituted, 'addc');
+    
+    result = substituteRule(rule, 'abc', 0);
+    throwIfNot(isDefined)(result);
+    throwIfNot(isEqual)(result.success, false);
+
+    result = substituteRule(rule, 'abc', 2);
+    throwIfNot(isDefined)(result);
+    throwIfNot(isEqual)(result.success, false);
+    
+})();
+
+function prove(grammar, premise, conclusion) {
+    throwIfNot(isValidGrammar)(grammar);
+    throwIfNot(isString)(premise);
+    throwIfNot(isString)(conclusion);
+
+    let result = {};
+
+    // Check for already proved.
+    for (let rule of grammar.rules) {
+        if (premise === rule.left.text 
+            && conclusion === rule.right.text) {
+            result.existing = rule;
+            return result;
+        }
+    }
+
+    let proof = [];
+    result.proof = proof;
+    proof.push(premise);
+
+    trySubstitutions(premise, 2);
+
+    return result;
+
+    function trySubstitutions(premise, n) {
+        for (let substitution of getSubstitutions(premise)) {
+            proof.push(substitution);
+            if (substitution === conclusion) {
+                proof.push(conclusion);
+                return true;
+            }
+            proof.pop();
+            
+            if (n >= 1) {
+                if (trySubstitutions(substitution, n - 1)) {
+                    return true;
+                }
+            }
+        }
+    }
+
+    function* getSubstitutions(premise) {
+        for (let rule of grammar.rules) {
+            for (let i of range(premise.length)) {
+                let { success, substituted } = substituteRule(rule, premise, i);
+                if (success) {
+                    yield substituted;
+                }
+            }
+        }
+    }
+}
+
+(function test() {
+    let grammar = checkFile('v2/reverse2.g');
+
+    let premise;
+    let conclusion;
+    let result;
+
+    premise = '(1)c';
+    conclusion = '(c1)';
+    result = prove(grammar, premise, conclusion);
+    throwIfNot(isDefined)(result);
+    throwIfNot(isDefined)(result.existing);
+
+    premise =       '(1)d';
+    conclusion =    '(d1)';
+    result = prove(grammar, premise, conclusion);
+
+    console.log({result});
+    if (result.proof) {
+        for (let p of result.proof) {
+            console.log(p);
+        }
+    }
+})();
+
 
 

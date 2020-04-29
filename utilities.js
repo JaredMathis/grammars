@@ -2,6 +2,7 @@ const fs = require('fs');
 
 module.exports = {
     isArray,
+    isArrayIndex,
     isAtLeast,
     isDefined,
     isEqual,
@@ -91,6 +92,11 @@ function isAtLeast(n, i) {
     throwIfNot(isInteger, ' expecting i to be integer: ' + i)(i);
 
     return n >= i;
+
+}
+
+function isAtMost(n, i) {
+    return isAtLeast(i, n);
 }
 
 function range(count, offset) {
@@ -149,3 +155,13 @@ function isArray(array) {
 throwIfNot(isEqual)(isArray([]), true);
 throwIfNot(isEqual)(isArray([1,2,3]), true);
 throwIfNot(isEqual)(isArray('a'), false);
+
+function isArrayIndex(array, index) {
+    throwIfNot(isInteger)(index);
+
+    if (isString(array)) {
+        return isAtLeast(index, 0) && isAtMost(index, array.length - 1);
+    }
+
+    throwNotImplemented();
+}

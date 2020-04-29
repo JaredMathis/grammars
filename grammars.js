@@ -1,24 +1,7 @@
-let checkV1 = false;
-let grammarsV1 = [
-    'v1/addition.g',
-    'v1/boolean.g',
-    'v1/comparison.g',
-    'v1/multiplication.g',
-    'v1/multiply.g',
-    'v1/parenthesis.g',
-    'v1/primes.g',
-    'v1/subtract.g',
-];
-
-let checkV2 = true;
-let grammarsV2 = [
-    'v2/addition.g',
-    'v2/reverse.g',
-]
-
 const fs = require('fs');
 
 module.exports = {
+    checkFile,
     parseGrammar,
 }
 ;
@@ -474,13 +457,5 @@ function checkFile(fileName, files, grammar) {
     
     parseGrammar(text, fileName, files, grammar);
 }
-function checkIf(b, list) {
-    if (b) {
-        for (let fileName of list) {
-            checkFile(fileName);
-        }
-    }
-}
 
-checkIf(checkV1, grammarsV1);
-checkIf(checkV2, grammarsV2);
+

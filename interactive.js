@@ -19,4 +19,10 @@ const {
 } 
 = require('./grammars');
 
-console.log({parseGrammar});
+const readlineSync = require('readline-sync');
+
+function readStatement() {
+    let input = readlineSync.prompt();
+}
+
+readStatement();

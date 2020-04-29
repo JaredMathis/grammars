@@ -1,6 +1,7 @@
 const fs = require('fs');
 
 module.exports = {
+    arraySkip,
     isArray,
     isArrayIndex,
     isAtLeast,
@@ -10,13 +11,20 @@ module.exports = {
     isEqualJson,
     isInteger,
     isString,
+    isStringNonEmpty,
     isUndefined,
+    logIndent,
+    consoleLog,
     range,
-    throwIfNot,
+    readTextFile,
+    summarize,
+    exitIfNot: exitIfNot,
     throwNotImplemented,
     throws,
 }
 ;
+
+let indent = 0;
 
 function throwNotImplemented(message) {
     throw new Error('not implemented: ' + message);
@@ -30,54 +38,95 @@ function isDefined(n) {
     return !isUndefined(n);
 }
 
-function throwIfNot(f, message) {
-    if (!isDefined(f)) {
-        throw new Error('Expecting f to be defined: ' + f);
+function throwMessage(message) {
+    throw new Error(message);
+}
+
+function exitIfNot(lambda, message, exitLambda) {
+    let log = true;
+    let verbose = false;
+    if (log)
+    if (verbose)
+    console.log('exitIfNot: entered; ' + message);
+
+    if (!isDefined(exitLambda)) {
+        exitLambda = () => process.exit(1);
+    }
+
+    if (!isDefined(lambda)) {
+        throw new Error('Expecting lambda to be defined: ' + lambda);
     }
     if (isDefined(message)) {
         if (message.toString() !== message) {
             throw new Error('Message is defined. Expecting string: ' + message);
         }
-    } else {
-        
     }
 
     return function () {
         let result;
         try {
-            result = f.apply(null, arguments);
+            result = lambda.apply(null, arguments);
         } catch (e) {
-            error(arguments, e);
+            let errorMessage = getErrorMessage(arguments, result, e);
+            throw new Error(errorMessage);
         }
         if (!result) {
-            error(arguments);
+            let errorMessage = getErrorMessage(arguments, result);
+
+            if (exitLambda !== throwMessage)
+            if (log) {
+                console.log('exitIfNot: exiting');
+                console.log('  ' + errorMessage);
+
+                let stack = new Error().stack;
+                console.log(stack);
+            }
+            
+            exitLambda(errorMessage);
         }
     }
 
-    function error(args, inner) {
+    function getErrorMessage(args, result, inner) {
         let extra = isDefined(inner) ? "; " + inner : "";
-        throw new Error('throwIfNot ' + (message || f.name) + '; arguments: ' + JSON.stringify(args) + extra);
+
+        let errorMessage = "exitIfNot: ";
+
+        if (message) {
+            errorMessage += message;
+        }
+
+        errorMessage += '; Called ' + summarize(lambda.name);
+        errorMessage += '. Expecting truth-y. Got: ' + JSON.stringify(result);
+
+        errorMessage += "; Arguments: " + JSON.stringify(args);
+
+        errorMessage += extra;
+
+        return errorMessage;
     }
 }
 
 (function test() {
-    let inner = throwIfNot(a => false, 'inner message');
-    throwIfNot(isEqual)(throws(a => inner(123)), 'Error: throwIfNot inner message; arguments: {\"0\":123}');
+    consoleLog('testing exitIfNot');
 
-    let outer = throwIfNot(() => inner(123), 'outer message');
+    let inner = exitIfNot(a => false, 'inner message', throwMessage);
+    exitIfNot(isEqual)(throws(a => inner(123)), 'Error: exitIfNot inner message; arguments: {\"0\":123}');
+
+    let outer = exitIfNot(() => inner(123), 'outer message', throwMessage);
     let actual = throws(a => outer(234));
-    throwIfNot(isEqual)(actual, 'Error: throwIfNot outer message; arguments: {\"0\":234}; Error: throwIfNot inner message; arguments: {\"0\":123}');
+    exitIfNot(isEqual)(actual, 'Error: exitIfNot outer message; arguments: {\"0\":234}; Error: exitIfNot inner message; arguments: {\"0\":123}');
+
+    consoleLog('testing exitIfNot complete');
 })();
 
 function isEqual(a, b) {
-    throwIfNot(isDefined)(a);
-    throwIfNot(isDefined)(b);
+    exitIfNot(isDefined)(a);
+    exitIfNot(isDefined)(b);
     return a === b;
 }
 
-
 function isInteger(n) {
-    throwIfNot(isDefined, 'Expecting n to be defined: ' + n)(n);
+    exitIfNot(isDefined, 'Expecting n to be defined: ' + n)(n);
 
     //console.log('isInteger ' + typeof(n) + ' ' + n);
 
@@ -89,8 +138,8 @@ function isInteger(n) {
 function isAtLeast(n, i) {
     //console.log('isAtLeast ' + typeof(n) + ' ' + n);
 
-    throwIfNot(isInteger, ' expecting n to be integer: ' + n)(n);
-    throwIfNot(isInteger, ' expecting i to be integer: ' + i)(i);
+    exitIfNot(isInteger, ' expecting n to be integer: ' + n)(n);
+    exitIfNot(isInteger, ' expecting i to be integer: ' + i)(i);
 
     return n >= i;
 
@@ -101,8 +150,8 @@ function isAtMost(n, i) {
 }
 
 function range(count, offset) {
-    throwIfNot(isInteger)(count);
-    throwIfNot(isAtLeast)(count, 0);
+    exitIfNot(isInteger)(count);
+    exitIfNot(isAtLeast)(count, 0);
 
     if (isUndefined(offset)) {
         offset = 0;
@@ -122,26 +171,33 @@ function isEqualJson(a, b) {
     return aJson === bJson;
 }
 
-throwIfNot(isEqualJson)(range(0), []);
-throwIfNot(isEqualJson)(range(1), [0]);
-throwIfNot(isEqualJson)(range(2), [0, 1]);
-throwIfNot(isEqualJson)(range(3), [0, 1, 2]);
-throwIfNot(isEqualJson)(range(3, 1), [1, 2, 3]);
+exitIfNot(isEqualJson)(range(0), []);
+exitIfNot(isEqualJson)(range(1), [0]);
+exitIfNot(isEqualJson)(range(2), [0, 1]);
+exitIfNot(isEqualJson)(range(3), [0, 1, 2]);
+exitIfNot(isEqualJson)(range(3, 1), [1, 2, 3]);
 
 
 
 function isString(n) {
-    throwIfNot(isDefined, 'Expecting n to be defined: ' + n)(n);
+    exitIfNot(isDefined, 'Expecting n to be defined: ' + n)(n);
     return n.toString() === n;
 }
 
-throwIfNot(isEqual)(isString('01'), true);
-throwIfNot(isEqual)(isString(''), true);
-throwIfNot(isEqual)(isString(1), false);
+exitIfNot(isEqual)(isString('01'), true);
+exitIfNot(isEqual)(isString(''), true);
+exitIfNot(isEqual)(isString(1), false);
 
-function throws(f) {
+/**
+ * If lambda() does not throw, returns false.
+ * Otherwise:
+ *  If there is an error message, returns the error message.
+ *  Otherwise returns true.
+ * @param {*} lambda 
+ */
+function throws(lambda) {
     try {
-        f();
+        lambda();
     } catch (e) {
         return e.toString() || true;
     }
@@ -149,27 +205,27 @@ function throws(f) {
 }
 
 function isArray(array) {
-    throwIfNot(isDefined, 'Expecting array to be defined: ' + array)(array);
+    exitIfNot(isDefined, 'Expecting array to be defined: ' + array)(array);
     return Array.isArray(array);
 } 
 
-throwIfNot(isEqual)(isArray([]), true);
-throwIfNot(isEqual)(isArray([1,2,3]), true);
-throwIfNot(isEqual)(isArray('a'), false);
+exitIfNot(isEqual)(isArray([]), true);
+exitIfNot(isEqual)(isArray([1,2,3]), true);
+exitIfNot(isEqual)(isArray('a'), false);
 
 function isArrayIndex(array, index) {
-    throwIfNot(isInteger)(index);
+    exitIfNot(isInteger)(index);
 
-    if (isString(array)) {
+    if (isString(array) || isArray(array)) {
         return isAtLeast(index, 0) && isAtMost(index, array.length - 1);
     }
 
-    throwNotImplemented();
+    return false;
 }
 
 // TODO: make more efficient
 function isDistinct(array) {
-    throwIfNot(isArray)(array);
+    exitIfNot(isArray)(array);
 
     for (let i of range(array.length)) {
         for (let j of range(array.length)) {
@@ -185,8 +241,144 @@ function isDistinct(array) {
     return true;
 }
 
-throwIfNot(isEqual)(isDistinct([]), true);
-throwIfNot(isEqual)(isDistinct([1]), true);
-throwIfNot(isEqual)(isDistinct([1,2]), true);
-throwIfNot(isEqual)(isDistinct([1,2,'2']), true);
-throwIfNot(isEqual)(isDistinct([1,2,2]), false);
+exitIfNot(isEqual)(isDistinct([]), true);
+exitIfNot(isEqual)(isDistinct([1]), true);
+exitIfNot(isEqual)(isDistinct([1,2]), true);
+exitIfNot(isEqual)(isDistinct([1,2,'2']), true);
+exitIfNot(isEqual)(isDistinct([1,2,2]), false);
+
+function* arraySkip(array, skipCount) {
+    let log = false;
+
+    if (log) console.log('arraySkip entered ' + JSON.stringify({array, skipCount}))
+
+    exitIfNot(isArray)(array);
+
+    if (array.length === 0) {
+        return skipCount === 0;
+    }    
+    exitIfNot(isArrayIndex)(array, skipCount);
+
+    for (let i = skipCount; i < array.length; i++) {
+        yield array[i];
+    }
+}
+
+exitIfNot(isEqualJson)([1], [...arraySkip([1], 0)]);
+exitIfNot(isEqualJson)([2], [...arraySkip([1, 2], 1)]);
+exitIfNot(isEqualJson)([], [...arraySkip([], 0)]);
+exitIfNot(throws(() => [...arraySkip([], -1)]));
+exitIfNot(throws(() => [...arraySkip([], 1)]));
+exitIfNot(isEqual)(throws(() => [...arraySkip([], 0)]), false);
+
+// TODO: replace fs.existsSync with this function
+function readTextFile(fileName) {
+    exitIfNot(isString)(fileName);
+
+    if (!fs.existsSync(fileName)) {
+        throw new Error('readTextFile: file does not exist: ' + summarize(fileName));
+    }
+
+    let result = fs.readFileSync(fileName, 'utf8');
+    return result;
+}
+
+function summarize(o) {
+    let log = true;
+
+    let maxStringLength = 150;
+
+    let result = "";
+
+    if (isUndefined(o)) {
+        result += "[undefined]";
+        return result;
+    }
+
+    if (isString(o)) {
+        if (o.length === 0) {
+            result += "[empty string]";
+            return result;
+        }
+        let continuation = "...";
+
+        if (o.length > maxStringLength) {
+            result += o.slice(0, maxStringLength - continuation.length) + continuation;
+        } else {
+            result += o;
+        }
+        return result;
+    }
+    if (isArray(o)) {
+        let result = "array ";
+        if (o.length === 0) {
+            result += "[]";
+            return result;
+        }
+        result += o.length;
+        result += ' items';
+        let i = 0;
+        while (result.length < maxStringLength && i < o.length) {
+            result += ` [${i}]=` + summarize(JSON.stringify(o[0]));
+            i++;
+        }
+        return summarize(result);
+    }
+
+    let properties = Object.getOwnPropertyNames(o);
+    if (properties.length >= 1) {
+        let key0 = properties[0];
+        let summary0 = summarizeProperty(o, key0);
+
+        if (properties.length === 1) {
+            result += summary0;
+            return result;
+
+        } else if (properties.length === 2) {
+            let key1 = properties[1];
+            let summary1 = summarizeProperty(o, key1);
+
+            result += " ";
+            result += summary1;
+
+            // TODO: compress two summaries.
+            if (result.length > maxStringLength) {
+                throwNotImplemented('composite summary too large: ' + result);
+            }
+        }
+
+        function summarizeProperty(o, key) {
+            let valueSummary = summarize(o[key]);
+            let summary = key + ": " + valueSummary;
+            return summarize(summary);
+        }
+    } 
+
+    throwNotImplemented("summarize needs implementation: type: " + typeof(o));
+}
+
+function isStringNonEmpty(s) {
+    return isString(s) 
+        && s.length > 0;
+}
+
+function logIndent(lambda) {
+    exitIfNot(isDefined(lambda));
+
+    indent++;
+    lambda();
+    indent--;
+}
+
+// Cannot call exitIfNot
+function consoleLog(message) {
+    let summary = summarize(message);
+
+    let result = summary;
+
+    for (let i of range(indent)) {
+        result = "  " + result;
+    }
+
+    console.log(result);
+}

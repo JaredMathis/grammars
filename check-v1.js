@@ -11,6 +11,8 @@ let grammars = [
 
 const { checkFile } = require('./grammars');
 
+console.log('Checking v1');
+
 for (let g of grammars) {
     checkFile(g);
 }

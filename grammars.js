@@ -8,6 +8,8 @@ module.exports = {
 ;
 
 const {
+    arraySkip,
+    consoleLog,
     isArray,
     isArrayIndex,
     isAtLeast,
@@ -17,9 +19,13 @@ const {
     isEqualJson,
     isInteger,
     isString,
+    isStringNonEmpty,
     isUndefined,
+    logIndent,
     range,
-    throwIfNot,
+    readTextFile,
+    summarize,
+    exitIfNot,
     throwNotImplemented,
     throws,
 }
@@ -27,20 +33,30 @@ const {
 
 const specialToken = '#';
 const ruleToken = '|';
-const includeToken = 'include'
+const includeToken = specialToken + 'include'
+const importToken = specialToken + 'import'
+
+// TODO: Whitespace abstraction/as a constant/tokenization.
 
 function isValidRule(rule) {
     let log = false;
     if (log) console.log('isValidRule entered ' + JSON.stringify(rule));
 
-    throwIfNot(isDefined, 'expecting rule to be defined: ' + rule)(rule);
+    if (!isDefined(rule)) {
+        if (log) consoleLog('expecting rule to be defined: ' + rule);
+        return false;
+    }
 
-    throwIfNot(isDefined, 'expecting left to be defined. rule: ' + JSON.stringify(rule))(rule.left);
+    if (!isDefined(rule.left)) {
+        if (log) consoleLog('expecting left to be defined. rule: ' + JSON.stringify(rule));
+        return false;
+    }
+
     if (!isValidSide(rule.left.text)) {
         return false;
     } 
     
-    throwIfNot(isDefined)(rule.right);
+    exitIfNot(isDefined)(rule.right);
     if (!isValidSide(rule.right.text)) {
         return false;
     } 
@@ -53,10 +69,10 @@ function isValidRule(rule) {
     return true;
 }
 
-throwIfNot(isEqual)(isValidRule({ left: {text: 'a' }, right: { text: 'b' } }), true);
-throwIfNot(isEqual)(isValidRule({ left: {text: '' }, right: { text: 'b' } }), true);
-throwIfNot(isEqual)(isValidRule({ left: {text: 'a' }, right: { text: '' } }), true);
-throwIfNot(isEqual)(isValidRule({ left: {text: '' }, right: { text: '' } }), false);
+exitIfNot(isEqual)(isValidRule({ left: {text: 'a' }, right: { text: 'b' } }), true);
+exitIfNot(isEqual)(isValidRule({ left: {text: '' }, right: { text: 'b' } }), true);
+exitIfNot(isEqual)(isValidRule({ left: {text: 'a' }, right: { text: '' } }), true);
+exitIfNot(isEqual)(isValidRule({ left: {text: '' }, right: { text: '' } }), false);
 
 function isValidSide(side) {
     if (!isDefined(side)) {
@@ -74,17 +90,21 @@ function isValidSide(side) {
     return true;
 }
 
-throwIfNot(isEqual)(isValidRule({ left: { text: 'a' }, right: { text: 'b' } }), true);
-throwIfNot(isEqual)(isValidRule({ left: 'a', right: { text: 'b' } }), false);
-throwIfNot(isEqual)(isValidRule({ left: { text: 'a' }, right: 'b' }), false);
-throwIfNot(isEqual)(isValidRule({ left: { text: 'a ' }, right: { text: 'b' } }), false);
-throwIfNot(isEqual)(isValidRule({ left: { text: 'a' }, right: { text: 'b ' } }), false);
-throwIfNot(isEqual)(isValidRule({ left: { text: 1 }, right: { text: 'b' } }), false);
-throwIfNot(isEqual)(isValidRule({ left: { text: undefined }, right: { text: 'b' } }), false);
-throwIfNot(isEqual)(isValidRule({ left: { text: 'a' }, right: { text: 1 } }), false);
-throwIfNot(isEqual)(isValidRule({ left: { text: 'a' }, right: { text: undefined } }), false);
-throwIfNot(throws)(() => isValidRule({ right: 'b' }), false);
-throwIfNot(throws)(() => isValidRule({ left: { text: 'a' } }), false);
+consoleLog('testing isValidRule');
+
+exitIfNot(isEqual)(isValidRule({ left: { text: 'a' }, right: { text: 'b' } }), true);
+exitIfNot(isEqual)(isValidRule({ left: 'a', right: { text: 'b' } }), false);
+exitIfNot(isEqual)(isValidRule({ left: { text: 'a' }, right: 'b' }), false);
+exitIfNot(isEqual)(isValidRule({ left: { text: 'a ' }, right: { text: 'b' } }), false);
+exitIfNot(isEqual)(isValidRule({ left: { text: 'a' }, right: { text: 'b ' } }), false);
+exitIfNot(isEqual)(isValidRule({ left: { text: 1 }, right: { text: 'b' } }), false);
+exitIfNot(isEqual)(isValidRule({ left: { text: undefined }, right: { text: 'b' } }), false);
+exitIfNot(isEqual)(isValidRule({ left: { text: 'a' }, right: { text: 1 } }), false);
+exitIfNot(isEqual)(isValidRule({ left: { text: 'a' }, right: { text: undefined } }), false);
+exitIfNot(throws)(() => isValidRule({ right: 'b' }), false);
+exitIfNot(throws)(() => isValidRule({ left: { text: 'a' } }), false);
+
+consoleLog('testing isValidRule complete');
 
 function isValidSubstitution(rule, index, previous, current) {
     let log = false;
@@ -92,9 +112,9 @@ function isValidSubstitution(rule, index, previous, current) {
 
     if (log) console.log('isValidSubstitution entered ' + JSON.stringify({ index, previous, current, rule }));
 
-    throwIfNot(isValidRule)(rule);
-    throwIfNot(isString)(previous);
-    throwIfNot(isString)(current);
+    exitIfNot(isValidRule)(rule);
+    exitIfNot(isString)(previous);
+    exitIfNot(isString)(current);
 
     let left = rule.left.text;
     let right = rule.right.text;
@@ -103,9 +123,9 @@ function isValidSubstitution(rule, index, previous, current) {
 
     let a = previous.length - left.length;
     let b = current.length - right.length;
-    throwIfNot(isInteger)(a);
-    throwIfNot(isInteger)(b);
-    throwIfNot(isEqual, 'invalid length')(a, b);
+    exitIfNot(isInteger)(a);
+    exitIfNot(isInteger)(b);
+    exitIfNot(isEqual, 'invalid length')(a, b);
 
     // Rule left substitutes into previous
     for (let i of range(left.length)) {
@@ -115,7 +135,7 @@ function isValidSubstitution(rule, index, previous, current) {
         if (log) 
         if (verbose)
         console.log('isValidSubstitution left rule into previous ' + JSON.stringify({ a, b, pi, i }));
-        throwIfNot(isEqual)(a, b);
+        exitIfNot(isEqual)(a, b);
     }
 
     // Before substitution matches
@@ -125,7 +145,7 @@ function isValidSubstitution(rule, index, previous, current) {
         if (log) 
         if (verbose)
         console.log('isValidSubstitution before ' + JSON.stringify({ a, b }))
-        throwIfNot(isEqual)(a, b);
+        exitIfNot(isEqual)(a, b);
     }
 
     // Rule right substitutes into current
@@ -135,7 +155,7 @@ function isValidSubstitution(rule, index, previous, current) {
         if (log) 
         if (verbose)
         console.log('isValidSubstitution right rule into current ' + JSON.stringify({ a, b }));
-        throwIfNot(isEqual)(a, b);
+        exitIfNot(isEqual)(a, b);
     }
 
     // After substitution matches
@@ -145,32 +165,32 @@ function isValidSubstitution(rule, index, previous, current) {
         if (log) 
         if (verbose)
         console.log('isValidSubstitution right rule into current ' + JSON.stringify({ a, b }));
-        throwIfNot(isEqual)(a, b);
+        exitIfNot(isEqual)(a, b);
     }
 
     return true;
 }
 
-throwIfNot(isEqual)(isValidSubstitution({ left: { text: 'a' }, right: { text: 'b' } }, 0, 'a', 'b'), true);
-throwIfNot(throws)(() => isValidSubstitution({ left: { text: 'a' }, right: { text: 'b' } }, 0, 'a', 'c'));
-throwIfNot(throws)(() => isValidSubstitution({ left: { text: 'a' }, right: { text: 'b' } }, 0, 'a', ''));
-throwIfNot(throws)(() => isValidSubstitution({ left: { text: 'a' }, right: { text: 'b' } }, 0, 'a', 'a'));
-throwIfNot(isEqual)(isValidSubstitution({ left: { text: 'a' }, right: { text: 'bb' } }, 0, 'a', 'bb'), true);
-throwIfNot(throws)(() => isValidSubstitution({ left: { text: 'a' }, right: { text: 'bb' } }, 1, 'a', 'bb'));
-throwIfNot(isEqual)(isValidSubstitution({ left: { text: 'a' }, right: { text: 'bb' } }, 1, 'aa', 'abb'), true);
-throwIfNot(isEqual)(isValidSubstitution({ left: { text: 'a' }, right: { text: 'bb' } }, 1, 'aaa', 'abba'), true);
-throwIfNot(isEqual)(isValidSubstitution({ left: { text: 'a' }, right: { text: '' } }, 1, 'aaa', 'aa'), true);
-throwIfNot(throws)(() => isValidSubstitution({ left: { text: 'a' }, right: { text: '' } }, 1, 'aaa', 'aaa'));
-throwIfNot(throws)(() => isValidSubstitution({ left: { text: 'a' }, right: { text: 'bb' } }, 1, 'aaa', 'abbd'));
+exitIfNot(isEqual)(isValidSubstitution({ left: { text: 'a' }, right: { text: 'b' } }, 0, 'a', 'b'), true);
+exitIfNot(throws)(() => isValidSubstitution({ left: { text: 'a' }, right: { text: 'b' } }, 0, 'a', 'c'));
+exitIfNot(throws)(() => isValidSubstitution({ left: { text: 'a' }, right: { text: 'b' } }, 0, 'a', ''));
+exitIfNot(throws)(() => isValidSubstitution({ left: { text: 'a' }, right: { text: 'b' } }, 0, 'a', 'a'));
+exitIfNot(isEqual)(isValidSubstitution({ left: { text: 'a' }, right: { text: 'bb' } }, 0, 'a', 'bb'), true);
+exitIfNot(throws)(() => isValidSubstitution({ left: { text: 'a' }, right: { text: 'bb' } }, 1, 'a', 'bb'));
+exitIfNot(isEqual)(isValidSubstitution({ left: { text: 'a' }, right: { text: 'bb' } }, 1, 'aa', 'abb'), true);
+exitIfNot(isEqual)(isValidSubstitution({ left: { text: 'a' }, right: { text: 'bb' } }, 1, 'aaa', 'abba'), true);
+exitIfNot(isEqual)(isValidSubstitution({ left: { text: 'a' }, right: { text: '' } }, 1, 'aaa', 'aa'), true);
+exitIfNot(throws)(() => isValidSubstitution({ left: { text: 'a' }, right: { text: '' } }, 1, 'aaa', 'aaa'));
+exitIfNot(throws)(() => isValidSubstitution({ left: { text: 'a' }, right: { text: 'bb' } }, 1, 'aaa', 'abbd'));
 
 function isValidGrammar(grammar) {
-    throwIfNot(isDefined)(grammar);
+    exitIfNot(isDefined)(grammar);
 
-    throwIfNot(isArray)(grammar.rules);
-    throwIfNot(isAtLeast)(grammar.rules.length, 1);
+    exitIfNot(isArray)(grammar.rules);
+    exitIfNot(isAtLeast, 'grammar needs at least 1 rule')(grammar.rules.length, 1);
 
     for (let r of grammar.rules) {
-        throwIfNot(isValidRule, 'expecting r to be valid rule')(r);
+        exitIfNot(isValidRule, 'expecting r to be valid rule')(r);
     }
 
     for (let r of grammar.rules) {
@@ -187,27 +207,27 @@ function isValidGrammar(grammar) {
     return true;
 }
 
-throwIfNot(throws)(() => isValidGrammar());
-throwIfNot(throws)(() => isValidGrammar({ start: undefined }));
-throwIfNot(throws)(() => isValidGrammar({ start: ' ' }));
-throwIfNot(throws)(() => isValidGrammar({ start: 'a' }));
-throwIfNot(throws)(() => isValidGrammar({ start: 'a', rules: undefined }));
-throwIfNot(throws)(() => isValidGrammar({ start: 'a', rules: [] }));
-throwIfNot(throws)(() => isValidGrammar({ start: 'a', rules: [undefined] }));
-throwIfNot(throws)(() => isValidGrammar({ start: 'a', rules: [{ left: { text: undefined }, right: { text: undefined }}] }));
-throwIfNot(throws)(() => isValidGrammar({ start: 'a', rules: [{ left: { text: ' ' }, right: { text: undefined } }] }));
-throwIfNot(throws)(() => isValidGrammar({ start: 'a', rules: [{ left: { text: undefined }, right: { text: ' ' } }] }));
-throwIfNot(throws)(() => isValidGrammar({ start: 'a', rules: [{ left: { text: ' ' }, right: { text: ' ' } }] }));
-throwIfNot(throws)(() => isValidGrammar({ start: 'a', rules: [{ left: { text: 'a' }, right: { text: ' ' } }] }));
-throwIfNot(isEqual)(isValidGrammar({ start: 'a', rules: [{ left: { text: 'a' }, right: { text: 'b'  }}] }), true);
-throwIfNot(throws)(() => isValidGrammar({ start: 'a', rules: [{ left: { text: ' ' }, right: { text: 'b'  }}] }));
-throwIfNot(isEqual)(isValidGrammar({ start: 'a', rules: [{ left: { text: '' }, right: { text: 'b' } }] }), true);
-throwIfNot(throws)(() => isValidGrammar({ start: 'a', rules: [{ left: { text: '' }, right: { text: 'b' } },{ left: { text: '' }, right: { text: 'b' } }] }), true);
-throwIfNot(throws)(() => isValidGrammar({ start: 'a', rules: [{ left: { text: '' }, right: { text: '' } }] }));
+exitIfNot(throws)(() => isValidGrammar());
+exitIfNot(throws)(() => isValidGrammar({ start: undefined }));
+exitIfNot(throws)(() => isValidGrammar({ start: ' ' }));
+exitIfNot(throws)(() => isValidGrammar({ start: 'a' }));
+exitIfNot(throws)(() => isValidGrammar({ start: 'a', rules: undefined }));
+exitIfNot(throws)(() => isValidGrammar({ start: 'a', rules: [] }));
+exitIfNot(throws)(() => isValidGrammar({ start: 'a', rules: [undefined] }));
+exitIfNot(throws)(() => isValidGrammar({ start: 'a', rules: [{ left: { text: undefined }, right: { text: undefined }}] }));
+exitIfNot(throws)(() => isValidGrammar({ start: 'a', rules: [{ left: { text: ' ' }, right: { text: undefined } }] }));
+exitIfNot(throws)(() => isValidGrammar({ start: 'a', rules: [{ left: { text: undefined }, right: { text: ' ' } }] }));
+exitIfNot(throws)(() => isValidGrammar({ start: 'a', rules: [{ left: { text: ' ' }, right: { text: ' ' } }] }));
+exitIfNot(throws)(() => isValidGrammar({ start: 'a', rules: [{ left: { text: 'a' }, right: { text: ' ' } }] }));
+exitIfNot(isEqual)(isValidGrammar({ start: 'a', rules: [{ left: { text: 'a' }, right: { text: 'b'  }}] }), true);
+exitIfNot(throws)(() => isValidGrammar({ start: 'a', rules: [{ left: { text: ' ' }, right: { text: 'b'  }}] }));
+exitIfNot(isEqual)(isValidGrammar({ start: 'a', rules: [{ left: { text: '' }, right: { text: 'b' } }] }), true);
+exitIfNot(throws)(() => isValidGrammar({ start: 'a', rules: [{ left: { text: '' }, right: { text: 'b' } },{ left: { text: '' }, right: { text: 'b' } }] }), true);
+exitIfNot(throws)(() => isValidGrammar({ start: 'a', rules: [{ left: { text: '' }, right: { text: '' } }] }));
 
 function isProof(p) {
-    throwIfNot(isDefined)(p);
-    throwIfNot(isString, 'p.text')(p.text);
+    exitIfNot(isDefined)(p);
+    exitIfNot(isString, 'p.text')(p.text);
     return true;
 }
 
@@ -217,9 +237,9 @@ function isValidProof(grammar, proof, fileName) {
 
     let innerMessage;
     
-    throwIfNot(isValidGrammar)(grammar, fileName);
+    exitIfNot(isValidGrammar)(grammar, fileName);
 
-    throwIfNot(isArray, 'proof')(proof);
+    exitIfNot(isArray, 'proof')(proof);
     
     if (proof.length === 1) {
         result.valid = false;
@@ -228,7 +248,7 @@ function isValidProof(grammar, proof, fileName) {
     }
 
     for (let p of proof) {
-        throwIfNot(isProof, 'expecting proof: ' + JSON.stringify(p))(p);
+        exitIfNot(isProof, 'expecting proof: ' + JSON.stringify(p))(p);
     }
 
     let valid;
@@ -278,9 +298,9 @@ function isValidProof(grammar, proof, fileName) {
     return result;
 }
 
-throwIfNot(isEqualJson)(isValidProof({ start: 'aa', rules: [{ left: { text: 'a' }, right: { text: 'b' } }]}, [{ text: 'a' }, { text: 'b' }]), { valid: true });
-throwIfNot(isEqualJson)(isValidProof({ start: 'aa', rules: [{ left: { text: 'a' }, right: { text: 'b' } }]}, [{ text: 'a' }, { text: 'c' }]), {"valid":false,"message":"Invalid substitution: Error: throwIfNot isEqual; arguments: {\"0\":\"c\",\"1\":\"b\"}","previous":{"text":"a"},"current":{"text":"c"}});
-throwIfNot(isEqualJson)(isValidProof({ start: 'aa', rules: [{ left: { text: 'a' }, right: { text: 'b' } }]}, [{ text: 'a' }]), {"valid":false,"message":"Proof cannot be 1 step"});
+exitIfNot(isEqualJson)(isValidProof({ start: 'aa', rules: [{ left: { text: 'a' }, right: { text: 'b' } }]}, [{ text: 'a' }, { text: 'b' }]), { valid: true });
+exitIfNot(isEqualJson)(isValidProof({ start: 'aa', rules: [{ left: { text: 'a' }, right: { text: 'b' } }]}, [{ text: 'a' }, { text: 'c' }]), {"valid":false,"message":"Invalid substitution: Error: exitIfNot isEqual; arguments: {\"0\":\"c\",\"1\":\"b\"}","previous":{"text":"a"},"current":{"text":"c"}});
+exitIfNot(isEqualJson)(isValidProof({ start: 'aa', rules: [{ left: { text: 'a' }, right: { text: 'b' } }]}, [{ text: 'a' }]), {"valid":false,"message":"Proof cannot be 1 step"});
 
 function addProof(grammar, proof, fileName, lineNumber) {
     // TODO: make sure grammar is self-consistent??
@@ -306,121 +326,194 @@ function addProof(grammar, proof, fileName, lineNumber) {
 }
 
 function parseGrammar(text, fileName, files, grammar) {
-    let log = false;
-    let verbose = false;
+    let log = true;
+    let verbose = true;
 
-    if (log) console.log('parseGrammar entered ' + JSON.stringify({ fileName }));
+    if (log) consoleLog('parseGrammar entered; ' + summarize({fileName}));
+    logIndent(() => {
 
-    throwIfNot(isString)(text);
 
-    if (isUndefined(fileName)) {
-        fileName = '(no fileName)';
-    }
+        exitIfNot(isString)(text);
 
-    if (isUndefined(files)) {
-        files = [];
-    }
-    // Already processed
-    if (files.includes(fileName)) {
-        return;
-    }
-    files.push(fileName);
+        if (isUndefined(fileName)) {
+            fileName = '(no fileName)';
+        }
+    
+        if (isUndefined(files)) {
+            files = [];
+        }
+        // Already processed
+        if (files.includes(fileName)) {
+            return;
+        }
+        files.push(fileName);
+    
+        if (isUndefined(grammar)) {
+            grammar = { rules: [] };
+        }
+    
+        let lines = text.split('\n');
+    
+        let proofBuffer = [];
+    
+        let isImporting = false;
+        let importSubstitutions = {};
+    
+        let lineNumber = 0;
+        for (let line of lines) {
+            let trimmed = line.trim();
+            lineNumber++;
 
-    if (isUndefined(grammar)) {
-        grammar = { rules: [] };
-    }
+            if (log)
+            if (verbose)
+            consoleLog(`processing line ${lineNumber}: ${summarize(line)}`);
 
-    let lines = text.split('\n');
-
-    let proof = [];
-
-    let lineNumber = 0;
-    for (let line of lines) {
-        let trimmed = line.trim();
-        lineNumber++;
-
-        if (log)
-        if (verbose)
-        console.log('parseGrammar ' + fileName + ' line ' + lineNumber + ' ' + line);
-        
-        if (trimmed.indexOf(specialToken) === 0) {
-            let remaining = trimmed.substring(specialToken.length);
-            // Special + ' ' is a comment
-            if (remaining[0] == ' ') {
-                continue;
-            }
+            logIndent(() => {            
+                let parts = line.split(' ')
+                .map(s => s.trim())
+                .filter(isStringNonEmpty);
             
-            if (remaining.indexOf(includeToken) === 0) {
-                let includeFileName = remaining.substring(includeToken.length).trim();
-
-                if (includeFileName === fileName) {
-                    throwNotImplemented('including self file recursively');
+                // Empty line
+                if (parts.length === 0) {
+                    // We're processing a theorem
+                    tryAddProofAndClearProofBuffer();
+                }
+        
+                // #
+                if (parts[0] === specialToken) {
+                    if (isImporting) {
+                        if (parts.length === 0) {
+                            throwNotImplemented();
+                        } else if (parts.length === 1) {
+                            // A single # is the end of an include section
+                            isImporting = false;
+                        } else if (parts.length === 2) {
+                            // Invalid, we need to know what symbol to substitute
+                            throwNotImplemented(getLineMessage('Expecting token after ' + parts[1]));
+                        } else if (parts.length >= 3) {
+                            let key = parts[1];
+                            // Skip 2: # and key
+                            let value = arraySkip(parts, 2);
+                            if (importSubstitutions[key]) {
+                                throwNotImplemented(getLineMessage('Duplicate defined symbol in ' + parts[1]));
+                            }
+        
+                            importSubstitutions[key] = value;
+        
+                            // TODO: ensure key is part of target grammar file.
+                        }
+                    }
+                    return;
+                }
+                    
+                if (parts[0] === includeToken) {
+                    let includeFileName = remaining.substring(includeToken.length).trim();
+        
+                    if (includeFileName === fileName) {
+                        throwNotImplemented('including self file recursively');
+                    }
+        
+                    fileToGrammar(includeFileName, files, grammar);      
+                    
+                    return;
+        
+                }
+                
+                if (parts[0] === importToken) {
+                    if (log) 
+                    consoleLog('encountered ' + importToken);
+        
+                    if (isImporting) {
+                        throwNotImplemented('Encountered include token while including');
+                    }
+        
+                    if (parts.length === 1) {
+                        throwNotImplemented('expecting filename after token ' + importToken);
+                    }
+                    
+                    isImporting = true;
+                    importSubstitutions = {};
+        
+                    if (log) consoleLog(summarize({remaining,parts}));
+        
+                    let fileName = parts[0];
+        
+                    let imported = fileToGrammar(fileName);
+        
+                    let importSubstitutions = {};
+        
+                    let before;
+                    for (let part of parts.slice(1)) {
+                        if (isUndefined(before)) {
+                            before = part[0];
+                        }
+                    }
+                }
+                
+                if (parts.includes(ruleToken)) {
+        
+                    if (log)
+                    if (verbose)
+                    consoleLog('is rule');    
+        
+                    // Is rule.
+        
+                    let ruleText = trimmed;
+                    let split = ruleText.split(ruleToken);
+                    let parts = split.length;
+                    if (parts !== 2) {
+                        throwNotImplemented('expecting ruleText to have 2 parts. ' + JSON.stringify({ parts, ruleText }));
+                    }
+                    let rule = { 
+                        left: textToSide(split[0].trim(), lineNumber), 
+                        right: textToSide(split[1].trim(), lineNumber),
+                        fileName,
+                    };
+                    grammar.rules.push(rule);
+                    return;
                 }
 
-                fileToGrammar(includeFileName, files, grammar);      
-                
-                continue;
-
-            } else {
-                throwNotImplemented('parseGrammar ' + fileName + ' line ' + lineNumber + ': Invalid usage of ' + specialToken + ' token');
-            }
+                if (log)
+                if (verbose) 
+                consoleLog({parts});
+        
+                if (log)
+                if (verbose) 
+                consoleLog('is proof step; pushing to proofBuilder');
+        
+                proofBuffer.push(textToSide(trimmed, lineNumber));
+            });
         }
-
-        if (trimmed.indexOf(ruleToken) >= 0) {
-            // Is rule.
-
-            let ruleText = trimmed;
-            let split = ruleText.split(ruleToken);
-            let parts = split.length;
-            if (parts !== 2) {
-                throwNotImplemented('expecting ruleText to have 2 parts. ' + JSON.stringify({ parts, ruleText }));
-            }
-            let rule = { 
-                left: textToSide(split[0].trim(), lineNumber), 
-                right: textToSide(split[1].trim(), lineNumber),
-                fileName,
+    
+    
+        if (proofBuffer.length !== 0) {
+            tryAddProofAndClearProofBuffer();
+        }
+    
+        exitIfNot(isValidGrammar)(grammar);
+    
+        function textToSide(trimmed, lineNumber) {
+            return {
+                text: trimmed,
+                lineNumber,
             };
-            grammar.rules.push(rule);
-            continue;
         }
-
-        if (trimmed === '') {            
-            if (proof.length === 0) {
-                //throwNotImplemented('proof is []; is there a double new line?');
-
-                // empty line
-                continue;
-            }
-
-            // We're processing a theorem
-            checkProof();
+    
+        // Try - will not add if proof buffer is empty
+        function tryAddProofAndClearProofBuffer() {
+    
+            if (log)
+            if (verbose)
+            consoleLog('addProofAndClearProofBuffer: entered; ' + summarize({proofBuffer}));
             
-            continue;
+            // Do not process if there are no steps.
+            if (proofBuffer.length === 0) return;
+            
+            addProof(grammar, proofBuffer, fileName, lineNumber);
+    
+            proofBuffer = [];
         }
-
-        // This is a proof step.
-        proof.push(textToSide(trimmed, lineNumber));
-    }
-
-
-    if (proof.length !== 0) {
-        checkProof();
-    }
-
-    throwIfNot(isValidGrammar)(grammar);
-
-    function textToSide(trimmed, lineNumber) {
-        return {
-            text: trimmed,
-            lineNumber,
-        };
-    }
-
-    function checkProof() {
-        addProof(grammar, proof, fileName, lineNumber);
-
-        proof = [];
-    }
+    });
 
     return grammar;
 }
@@ -457,6 +550,9 @@ b
 c
 `);
 
+// files is optional
+// grammar is optional
+// returns grammar
 function fileToGrammar(fileName, files, grammar) {
     let log = false;
 
@@ -464,9 +560,9 @@ function fileToGrammar(fileName, files, grammar) {
     console.log('checkFile entered', { 
         fileName});
 
-    throwIfNot(isString, 'checkFile: fileName needs to be specified')(fileName);
+    exitIfNot(isString, 'checkFile: fileName needs to be specified')(fileName);
 
-    let text = fs.readFileSync(fileName, 'utf8');
+    let text = readTextFile(fileName);
 
     if (log) 
     console.log('checkFile calling parseGrammar', { 
@@ -478,9 +574,9 @@ function fileToGrammar(fileName, files, grammar) {
 }
 
 function substituteRule(rule, premise, index) {
-    throwIfNot(isValidRule)(rule);
-    throwIfNot(isString)(premise);
-    throwIfNot(isArrayIndex)(premise, index);
+    exitIfNot(isValidRule)(rule);
+    exitIfNot(isString)(premise);
+    exitIfNot(isArrayIndex)(premise, index);
 
     let result = {
         success: false,
@@ -521,17 +617,17 @@ function substituteRule(rule, premise, index) {
     let result;
     
     result = substituteRule(rule, 'abc', 1);
-    throwIfNot(isDefined)(result);
-    throwIfNot(isEqual)(result.success, true);
-    throwIfNot(isEqual)(result.substituted, 'addc');
+    exitIfNot(isDefined)(result);
+    exitIfNot(isEqual)(result.success, true);
+    exitIfNot(isEqual)(result.substituted, 'addc');
     
     result = substituteRule(rule, 'abc', 0);
-    throwIfNot(isDefined)(result);
-    throwIfNot(isEqual)(result.success, false);
+    exitIfNot(isDefined)(result);
+    exitIfNot(isEqual)(result.success, false);
 
     result = substituteRule(rule, 'abc', 2);
-    throwIfNot(isDefined)(result);
-    throwIfNot(isEqual)(result.success, false);
+    exitIfNot(isDefined)(result);
+    exitIfNot(isEqual)(result.success, false);
     
 })();
 
@@ -539,9 +635,9 @@ function attemptToProve(grammar, premise, conclusion, fileName, layersDeep) {
     let log = false;
     let verbose = true;
 
-    throwIfNot(isValidGrammar)(grammar);
-    throwIfNot(isString)(premise);
-    throwIfNot(isString)(conclusion);
+    exitIfNot(isValidGrammar)(grammar);
+    exitIfNot(isString)(premise);
+    exitIfNot(isString)(conclusion);
 
     if (premise === conclusion) {
         throw new Error('premise is equal to conclusion');
@@ -635,10 +731,10 @@ function attemptToProve(grammar, premise, conclusion, fileName, layersDeep) {
 
 // Does not check proof validity
 function addProofToFile(fileName, proof) {
-    throwIfNot(isString)(fileName);
-    throwIfNot(isArray)(proof);
+    exitIfNot(isString)(fileName);
+    exitIfNot(isArray)(proof);
     for (let p of proof) {
-        throwIfNot(isProof)(p);
+        exitIfNot(isProof)(p);
     }
 
     fs.appendFileSync(fileName, '\n');
@@ -660,13 +756,12 @@ function addProofToFile(fileName, proof) {
     premise = '(1)c';
     conclusion = '(c1)';
     result = attemptToProve(grammar, premise, conclusion);
-    throwIfNot(isDefined)(result);
-    throwIfNot(isDefined)(result.existing);
+    exitIfNot(isDefined)(result);
+    exitIfNot(isDefined)(result.existing);
 })();
 
 (function test() {
-    let fileName = 'v2/balance.g';
-    //fileName = 'v2/addition.g'
+    let fileName = 'v2/find.g';
     let grammar = fileToGrammar(fileName);
 
     let premise;
@@ -674,9 +769,9 @@ function addProofToFile(fileName, proof) {
     let result;
 
     let layersDeep = 7;
-    // [r](1)
+
     let remaining = `
-    [b]()end [b-balanced]
+    m1s 1as
     `;
 
     // TODO drop parenthesis out;
@@ -734,9 +829,20 @@ function addProofToFile(fileName, proof) {
     }
 })();
 
+(function test() {
+    let grammar = fileToGrammar('v2/find-stop.g');
+
+    console.log({ grammar });
+})();
+
 
 
 // TODO: compress proofs; don't worry about length
 // Grammar: rename symbol
 
 // TODO: re-arrange order of proofs to compress
+
+// TOOD: check for atomic symbols/ambguity
+// For example if [m] is a sequence, it should always appear together
+// If another token is a subtoken of any token-pair
+// for example a[b c]d and [bc] then ambiguous

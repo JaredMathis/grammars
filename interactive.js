@@ -8,7 +8,7 @@ const {
     isString,
     isUndefined,
     range,
-    throwIfNot,
+    exitIfNot,
     throwNotImplemented,
     throws,
 } 

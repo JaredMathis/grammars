@@ -5,6 +5,7 @@ module.exports = {
     isArrayIndex,
     isAtLeast,
     isDefined,
+    isDistinct,
     isEqual,
     isEqualJson,
     isInteger,
@@ -165,3 +166,27 @@ function isArrayIndex(array, index) {
 
     throwNotImplemented();
 }
+
+// TODO: make more efficient
+function isDistinct(array) {
+    throwIfNot(isArray)(array);
+
+    for (let i of range(array.length)) {
+        for (let j of range(array.length)) {
+            if (j <= i) {
+                continue;
+            }
+            if (array[i] === array[j]) {
+                return false;
+            }
+        }
+    }
+
+    return true;
+}
+
+throwIfNot(isEqual)(isDistinct([]), true);
+throwIfNot(isEqual)(isDistinct([1]), true);
+throwIfNot(isEqual)(isDistinct([1,2]), true);
+throwIfNot(isEqual)(isDistinct([1,2,'2']), true);
+throwIfNot(isEqual)(isDistinct([1,2,2]), false);

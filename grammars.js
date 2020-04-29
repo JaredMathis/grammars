@@ -1,9 +1,9 @@
 const fs = require('fs');
 
 module.exports = {
-    checkFile,
+    checkFile: fileToGrammar,
     parseGrammar,
-    prove,
+    prove: attemptToProve,
 }
 ;
 
@@ -12,6 +12,7 @@ const {
     isArrayIndex,
     isAtLeast,
     isDefined,
+    isDistinct,
     isEqual,
     isEqualJson,
     isInteger,
@@ -227,7 +228,7 @@ function isValidProof(grammar, proof, fileName) {
     }
 
     for (let p of proof) {
-        throwIfNot(isProof)(p);
+        throwIfNot(isProof, 'expecting proof: ' + JSON.stringify(p))(p);
     }
 
     let valid;
@@ -281,6 +282,29 @@ throwIfNot(isEqualJson)(isValidProof({ start: 'aa', rules: [{ left: { text: 'a' 
 throwIfNot(isEqualJson)(isValidProof({ start: 'aa', rules: [{ left: { text: 'a' }, right: { text: 'b' } }]}, [{ text: 'a' }, { text: 'c' }]), {"valid":false,"message":"Invalid substitution: Error: throwIfNot isEqual; arguments: {\"0\":\"c\",\"1\":\"b\"}","previous":{"text":"a"},"current":{"text":"c"}});
 throwIfNot(isEqualJson)(isValidProof({ start: 'aa', rules: [{ left: { text: 'a' }, right: { text: 'b' } }]}, [{ text: 'a' }]), {"valid":false,"message":"Proof cannot be 1 step"});
 
+function addProof(grammar, proof, fileName, lineNumber) {
+    // TODO: make sure grammar is self-consistent??
+
+    if (isUndefined(lineNumber)) {
+        lineNumber = -1;
+    }
+
+    let result = isValidProof(grammar, proof, fileName);
+    // If proof is valid, add it as a new grammar rule.
+    if (result.valid) {
+        let left = proof[0];
+        let right = proof[proof.length - 1];
+        let rule = { 
+            left, 
+            right,
+            fileName,
+        };
+        grammar.rules.push(rule);
+    } else {
+        throw new Error('Invalid proof: ' + JSON.stringify({ fileName: fileName || 'no file name', result, lineNumber }, ' ', 2));
+    }
+}
+
 function parseGrammar(text, fileName, files, grammar) {
     let log = false;
     let verbose = false;
@@ -333,7 +357,7 @@ function parseGrammar(text, fileName, files, grammar) {
                     throwNotImplemented('including self file recursively');
                 }
 
-                checkFile(includeFileName, files, grammar);      
+                fileToGrammar(includeFileName, files, grammar);      
                 
                 continue;
 
@@ -393,20 +417,7 @@ function parseGrammar(text, fileName, files, grammar) {
     }
 
     function checkProof() {
-        let result = isValidProof(grammar, proof, fileName);
-        // If proof is valid, add it as a new grammar rule.
-        if (result.valid) {
-            let left = proof[0];
-            let right = proof[proof.length - 1];
-            let rule = { 
-                left, 
-                right,
-                fileName,
-            };
-            grammar.rules.push(rule);
-        } else {
-            throw new Error('Invalid proof: ' + JSON.stringify({ fileName: fileName || 'no file name', result, lineNumber }, ' ', 2));
-        }
+        addProof(grammar, proof, fileName, lineNumber);
 
         proof = [];
     }
@@ -446,7 +457,7 @@ b
 c
 `);
 
-function checkFile(fileName, files, grammar) {
+function fileToGrammar(fileName, files, grammar) {
     let log = false;
 
     if (log) 
@@ -524,12 +535,26 @@ function substituteRule(rule, premise, index) {
     
 })();
 
-function prove(grammar, premise, conclusion) {
+function attemptToProve(grammar, premise, conclusion, fileName, layersDeep) {
     throwIfNot(isValidGrammar)(grammar);
     throwIfNot(isString)(premise);
     throwIfNot(isString)(conclusion);
 
-    let result = {};
+    if (premise === conclusion) {
+        throw new Error('premise is equal to conclusion');
+    }
+
+    if (isUndefined(layersDeep)) {
+        layersDeep = 3;
+    }
+
+    if (isUndefined(fileName)) {
+        fileName = 'no file name';
+    }
+
+    let result = {
+        success: true,
+    };
 
     // Check for already proved.
     for (let rule of grammar.rules) {
@@ -540,29 +565,49 @@ function prove(grammar, premise, conclusion) {
         }
     }
 
-    let proof = [];
-    result.proof = proof;
-    proof.push(premise);
+    let proofTexts = [];
 
-    trySubstitutions(premise, 2);
+    let success = false;
+    for (let l of range(layersDeep, 1)) {
+        if (trySubstitutions(premise, layersDeep)) {
+            success = true;
+            break;
+        }
+    }
+    if (!success) {
+        result.success = false;
+        return result;
+    }
+
+    result.proof = [];
+    for (let t of proofTexts) {
+        result.proof.push({ text: t });
+    }
+
+    addProof(grammar, result.proof, fileName);
 
     return result;
 
     function trySubstitutions(premise, n) {
+        if (n <= 1) {
+            return;
+        }
+
+        proofTexts.push(premise);
+        
         for (let substitution of getSubstitutions(premise)) {
-            proof.push(substitution);
+            proofTexts.push(substitution);
             if (substitution === conclusion) {
-                proof.push(conclusion);
                 return true;
             }
-            proof.pop();
+            proofTexts.pop();
             
-            if (n >= 1) {
-                if (trySubstitutions(substitution, n - 1)) {
-                    return true;
-                }
+            if (trySubstitutions(substitution, n - 1)) {
+                return true;
             }
         }
+
+        proofTexts.pop();
     }
 
     function* getSubstitutions(premise) {
@@ -577,8 +622,25 @@ function prove(grammar, premise, conclusion) {
     }
 }
 
+// Does not check proof validity
+function addProofToFile(fileName, proof) {
+    throwIfNot(isString)(fileName);
+    throwIfNot(isArray)(proof);
+    for (let p of proof) {
+        throwIfNot(isProof)(p);
+    }
+
+    fs.appendFileSync(fileName, '\n');
+    fs.appendFileSync(fileName, '\n');
+    for (let p of proof) {
+        fs.appendFileSync(fileName, p.text);
+        fs.appendFileSync(fileName, '\n');
+    }
+}
+
 (function test() {
-    let grammar = checkFile('v2/reverse2.g');
+    let fileName = 'v2/reverse2.g';
+    let grammar = fileToGrammar(fileName);
 
     let premise;
     let conclusion;
@@ -586,19 +648,76 @@ function prove(grammar, premise, conclusion) {
 
     premise = '(1)c';
     conclusion = '(c1)';
-    result = prove(grammar, premise, conclusion);
+    result = attemptToProve(grammar, premise, conclusion);
     throwIfNot(isDefined)(result);
     throwIfNot(isDefined)(result.existing);
+})();
 
-    premise =       '(1)d';
-    conclusion =    '(d1)';
-    result = prove(grammar, premise, conclusion);
+(function test() {
+    let fileName = 'v2/reverse3.g';
+    //fileName = 'v2/addition.g'
+    let grammar = fileToGrammar(fileName);
 
-    console.log({result});
-    if (result.proof) {
-        for (let p of result.proof) {
-            console.log(p);
+    let premise;
+    let conclusion;
+    let result;
+
+    let layersDeep = 4;
+    // [r](1)
+    let remaining = `
+    [r]( [r.b][(1)[r.a]]
+    [(1)[r.a]]1 1[(1)[r.a]]
+    [r](1 [r.b]1[(1)[r.a]]
+    `;
+
+    // TODO drop parenthesis out;
+    // fix grammar rules
+
+    let i = 0;
+    let parts = remaining.split('\n');
+    for (let part of parts) {
+        let pair = part.trim();
+        if (pair.length === 0) {
+            continue;
         }
+        i++;
+        let parts2 = pair.split(' ');
+        if (parts2.length !== 2) {
+            throwNotImplemented(JSON.stringify({ pair }));
+        }
+        premise = parts2[0];
+        conclusion = parts2[1];
+        result = attemptToProve(grammar, premise, conclusion, fileName, layersDeep);
+    
+        if (result.proof) {
+            let proofs = result.proof.map(p => p.text)
+            if (isDistinct(proofs)) {  
+                if (result.proof.length === 2) {
+                    console.log(i + ' Only 2 steps. Not adding proof.')
+                } else {
+                    console.log(i + ' Adding proof.')
+
+                    for (let p of result.proof) {
+                        console.log(p);
+                    }
+
+                    addProofToFile(fileName, result.proof);
+                }
+            } else {
+                console.log(i + ' Contains duplicate steps. Not adding proof.')
+            }
+
+        } else {
+            if (result.existing) {
+                console.log(i + ' Already exists');
+            } else {
+                console.log(i + ' No proof.');
+            }
+        }
+    }
+
+    for (let r of remaining) {
+
     }
 })();
 

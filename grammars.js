@@ -536,6 +536,9 @@ function substituteRule(rule, premise, index) {
 })();
 
 function attemptToProve(grammar, premise, conclusion, fileName, layersDeep) {
+    let log = false;
+    let verbose = true;
+
     throwIfNot(isValidGrammar)(grammar);
     throwIfNot(isString)(premise);
     throwIfNot(isString)(conclusion);
@@ -569,7 +572,15 @@ function attemptToProve(grammar, premise, conclusion, fileName, layersDeep) {
 
     let success = false;
     for (let l of range(layersDeep, 1)) {
-        if (trySubstitutions(premise, layersDeep)) {
+        if (log)
+        if (verbose)
+        console.log('attemptToProve: trySubstitutions ' + JSON.stringify({ l }));
+
+        if (trySubstitutions(premise, l)) {
+            if (log)
+            if (verbose)
+            console.log('attemptToProve: trySubstitutions found');
+
             success = true;
             break;
         }
@@ -654,7 +665,7 @@ function addProofToFile(fileName, proof) {
 })();
 
 (function test() {
-    let fileName = 'v2/reverse3.g';
+    let fileName = 'v2/balance.g';
     //fileName = 'v2/addition.g'
     let grammar = fileToGrammar(fileName);
 
@@ -662,12 +673,10 @@ function addProofToFile(fileName, proof) {
     let conclusion;
     let result;
 
-    let layersDeep = 4;
+    let layersDeep = 7;
     // [r](1)
     let remaining = `
-    [r]( [r.b][(1)[r.a]]
-    [(1)[r.a]]1 1[(1)[r.a]]
-    [r](1 [r.b]1[(1)[r.a]]
+    [b]()end [b-balanced]
     `;
 
     // TODO drop parenthesis out;
@@ -705,6 +714,10 @@ function addProofToFile(fileName, proof) {
                 }
             } else {
                 console.log(i + ' Contains duplicate steps. Not adding proof.')
+                let output = false;
+                if (output) {
+                    
+                }
             }
 
         } else {
@@ -723,3 +736,7 @@ function addProofToFile(fileName, proof) {
 
 
 
+// TODO: compress proofs; don't worry about length
+// Grammar: rename symbol
+
+// TODO: re-arrange order of proofs to compress

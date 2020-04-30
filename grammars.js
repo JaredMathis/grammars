@@ -55,8 +55,12 @@ function isValidRule(rule) {
     if (!isValidSide(rule.left.text)) {
         return false;
     } 
+
+    if (!isDefined(rule.right)) {
+        if (log) consoleLog('expecting right to be defined. rule: ' + JSON.stringify(rule));
+        return false;
+    }
     
-    exitIfNot(isDefined)(rule.right);
     if (!isValidSide(rule.right.text)) {
         return false;
     } 
@@ -101,8 +105,8 @@ exitIfNot(isEqual)(isValidRule({ left: { text: 1 }, right: { text: 'b' } }), fal
 exitIfNot(isEqual)(isValidRule({ left: { text: undefined }, right: { text: 'b' } }), false);
 exitIfNot(isEqual)(isValidRule({ left: { text: 'a' }, right: { text: 1 } }), false);
 exitIfNot(isEqual)(isValidRule({ left: { text: 'a' }, right: { text: undefined } }), false);
-exitIfNot(throws)(() => isValidRule({ right: 'b' }), false);
-exitIfNot(throws)(() => isValidRule({ left: { text: 'a' } }), false);
+exitIfNot(isEqual)(isValidRule({ right: 'b' }), false);
+exitIfNot(isEqual)(isValidRule({ left: { text: 'a' } }), false);
 
 consoleLog('testing isValidRule complete');
 
@@ -110,87 +114,150 @@ function isValidSubstitution(rule, index, previous, current) {
     let log = false;
     let verbose = true;
 
-    if (log) console.log('isValidSubstitution entered ' + JSON.stringify({ index, previous, current, rule }));
+    if (log) consoleLog('isValidSubstitution entered ' + JSON.stringify({ index, previous, current, rule }));
 
-    exitIfNot(isValidRule)(rule);
-    exitIfNot(isString)(previous);
-    exitIfNot(isString)(current);
+    let result = true;
 
-    let left = rule.left.text;
-    let right = rule.right.text;
+    logIndent(() => {
 
-    if (log) console.log('isValidSubstitution entered ' + JSON.stringify({ left, right }));
+        if (!isValidRule(rule)) {
+            result = false;
+            return;
+        }
+        if (!isString(previous)) {
+            result = false;
+            return;
+        }
+        if (!isString(current)) {
+            result = false;
+            return;
+        }
 
-    let a = previous.length - left.length;
-    let b = current.length - right.length;
-    exitIfNot(isInteger)(a);
-    exitIfNot(isInteger)(b);
-    exitIfNot(isEqual, 'invalid length')(a, b);
+        let left = rule.left.text;
+        let right = rule.right.text;
 
-    // Rule left substitutes into previous
-    for (let i of range(left.length)) {
-        let pi = i + index;
-        let a = previous[pi];
-        let b = left[i];
-        if (log) 
-        if (verbose)
-        console.log('isValidSubstitution left rule into previous ' + JSON.stringify({ a, b, pi, i }));
-        exitIfNot(isEqual)(a, b);
-    }
+        if (log) consoleLog(JSON.stringify({ left, right }));
 
-    // Before substitution matches
-    for (let i of range(index)) {
-        let a = previous[i];
-        let b = current[i];
-        if (log) 
-        if (verbose)
-        console.log('isValidSubstitution before ' + JSON.stringify({ a, b }))
-        exitIfNot(isEqual)(a, b);
-    }
+        let a = previous.length - left.length;
+        let b = current.length - right.length;
 
-    // Rule right substitutes into current
-    for (let i of range(right.length)) {
-        let a = current[i + index];
-        let b = right[i];
-        if (log) 
-        if (verbose)
-        console.log('isValidSubstitution right rule into current ' + JSON.stringify({ a, b }));
-        exitIfNot(isEqual)(a, b);
-    }
+        if (a !== b) {
+            result = false;
+            return;
+        }
 
-    // After substitution matches
-    for (let i = index + left.length; i < previous.length; i++) {
-        let a = previous[i];
-        let b = current[i - left.length + right.length];
-        if (log) 
-        if (verbose)
-        console.log('isValidSubstitution right rule into current ' + JSON.stringify({ a, b }));
-        exitIfNot(isEqual)(a, b);
-    }
+        if (index + left.length > previous.length) {
+            result = false;
+            return;
+        }
 
-    return true;
+        if (index + right.length > current.length) {
+            result = false;
+            return;
+        }
+
+        // Rule left substitutes into previous
+        for (let i of range(left.length)) {
+            let previousIndex = i + index;
+            let previousI = previous[previousIndex];
+            let leftI = left[i];
+            if (log) 
+            if (verbose)
+            consoleLog('left rule into previous ' + JSON.stringify({ previousI, leftI, previousIndex, i }));
+
+            if (!isEqual(previousI, leftI)) {
+                result = false;
+                return;
+            }
+        }
+
+        // Before substitution matches
+        for (let i of range(index)) {
+            let a = previous[i];
+            let b = current[i];
+            if (log) 
+            if (verbose)
+            consoleLog('before ' + JSON.stringify({ a, b }))
+
+            if (!isEqual(a, b)) {
+                result = false;
+                return;
+            }
+        }
+
+        // Rule right substitutes into current
+        for (let i of range(right.length)) {
+            let a = current[i + index];
+            let b = right[i];
+            if (log) 
+            if (verbose)
+            consoleLog('right rule into current ' + JSON.stringify({ a, b }));
+            
+            if (!isEqual(a, b)) {
+                result = false;
+                return;
+            }
+        }
+
+        // After substitution matches
+        for (let i = index + left.length; i < previous.length; i++) {
+            let a = previous[i];
+            let b = current[i - left.length + right.length];
+            if (log) 
+            if (verbose)
+            consoleLog('right rule into current ' + JSON.stringify({ a, b }));
+            
+            if (!isEqual(a, b)) {
+                result = false;
+                return;
+            }
+        }
+   
+    });
+
+    if (log) consoleLog('isValidSubstitution leaving ' + JSON.stringify({ result }));
+
+    return result;  
 }
 
+console.log('testing isValidSubstitution');
 exitIfNot(isEqual)(isValidSubstitution({ left: { text: 'a' }, right: { text: 'b' } }, 0, 'a', 'b'), true);
-exitIfNot(throws)(() => isValidSubstitution({ left: { text: 'a' }, right: { text: 'b' } }, 0, 'a', 'c'));
-exitIfNot(throws)(() => isValidSubstitution({ left: { text: 'a' }, right: { text: 'b' } }, 0, 'a', ''));
-exitIfNot(throws)(() => isValidSubstitution({ left: { text: 'a' }, right: { text: 'b' } }, 0, 'a', 'a'));
+exitIfNot(isEqual)(isValidSubstitution({ left: { text: 'a' }, right: { text: 'b' } }, 0, 'a', 'c'), false);
+exitIfNot(isEqual)(isValidSubstitution({ left: { text: 'a' }, right: { text: 'b' } }, 0, 'a', ''), false);
+exitIfNot(isEqual)(isValidSubstitution({ left: { text: 'a' }, right: { text: 'b' } }, 0, 'a', 'a'), false);
 exitIfNot(isEqual)(isValidSubstitution({ left: { text: 'a' }, right: { text: 'bb' } }, 0, 'a', 'bb'), true);
-exitIfNot(throws)(() => isValidSubstitution({ left: { text: 'a' }, right: { text: 'bb' } }, 1, 'a', 'bb'));
+exitIfNot(isEqual)(isValidSubstitution({ left: { text: 'a' }, right: { text: 'bb' } }, 1, 'a', 'bb'), false);
 exitIfNot(isEqual)(isValidSubstitution({ left: { text: 'a' }, right: { text: 'bb' } }, 1, 'aa', 'abb'), true);
 exitIfNot(isEqual)(isValidSubstitution({ left: { text: 'a' }, right: { text: 'bb' } }, 1, 'aaa', 'abba'), true);
 exitIfNot(isEqual)(isValidSubstitution({ left: { text: 'a' }, right: { text: '' } }, 1, 'aaa', 'aa'), true);
-exitIfNot(throws)(() => isValidSubstitution({ left: { text: 'a' }, right: { text: '' } }, 1, 'aaa', 'aaa'));
-exitIfNot(throws)(() => isValidSubstitution({ left: { text: 'a' }, right: { text: 'bb' } }, 1, 'aaa', 'abbd'));
+exitIfNot(isEqual)(isValidSubstitution({ left: { text: 'a' }, right: { text: '' } }, 1, 'aaa', 'aaa'), false);
+exitIfNot(isEqual)(isValidSubstitution({ left: { text: 'a' }, right: { text: 'bb' } }, 1, 'aaa', 'abbd'), false);
+console.log('testing isValidSubstitution complete');
 
 function isValidGrammar(grammar) {
-    exitIfNot(isDefined)(grammar);
+    let log = false;
 
-    exitIfNot(isArray)(grammar.rules);
-    exitIfNot(isAtLeast, 'grammar needs at least 1 rule')(grammar.rules.length, 1);
+    if (isUndefined(grammar)) {
+        return false;
+    }
+
+    if (isUndefined(grammar.rules)){
+        return false;
+    }
+    if (!isArray(grammar.rules)){
+        return false;
+    }
+
+    if (grammar.rules.length < 1) {
+        if (log) consoleLog('grammar needs at least 1 rule');
+        return false;
+    }
 
     for (let r of grammar.rules) {
-        exitIfNot(isValidRule, 'expecting r to be valid rule')(r);
+        if (!isValidRule(r)) {
+            if (log) consoleLog('expecting r to be valid rule');
+            return false;
+        }
     }
 
     for (let r of grammar.rules) {
@@ -199,7 +266,8 @@ function isValidGrammar(grammar) {
                 continue;
             }
             if (r.left.text === q.left.text && r.right.text === q.right.text) {
-                throw new Error('Duplicate rules: ' + JSON.stringify({ r, q }, ' ', 2));
+                if (log) consoleLog('Duplicate rules: ' + JSON.stringify({ r, q }, ' ', 2));
+                return false;
             }
         }
     }
@@ -207,23 +275,25 @@ function isValidGrammar(grammar) {
     return true;
 }
 
-exitIfNot(throws)(() => isValidGrammar());
-exitIfNot(throws)(() => isValidGrammar({ start: undefined }));
-exitIfNot(throws)(() => isValidGrammar({ start: ' ' }));
-exitIfNot(throws)(() => isValidGrammar({ start: 'a' }));
-exitIfNot(throws)(() => isValidGrammar({ start: 'a', rules: undefined }));
-exitIfNot(throws)(() => isValidGrammar({ start: 'a', rules: [] }));
-exitIfNot(throws)(() => isValidGrammar({ start: 'a', rules: [undefined] }));
-exitIfNot(throws)(() => isValidGrammar({ start: 'a', rules: [{ left: { text: undefined }, right: { text: undefined }}] }));
-exitIfNot(throws)(() => isValidGrammar({ start: 'a', rules: [{ left: { text: ' ' }, right: { text: undefined } }] }));
-exitIfNot(throws)(() => isValidGrammar({ start: 'a', rules: [{ left: { text: undefined }, right: { text: ' ' } }] }));
-exitIfNot(throws)(() => isValidGrammar({ start: 'a', rules: [{ left: { text: ' ' }, right: { text: ' ' } }] }));
-exitIfNot(throws)(() => isValidGrammar({ start: 'a', rules: [{ left: { text: 'a' }, right: { text: ' ' } }] }));
+consoleLog('testing isValidGrammar')
+exitIfNot(isEqual)(isValidGrammar(), false);
+exitIfNot(isEqual)(isValidGrammar({ start: undefined }), false);
+exitIfNot(isEqual)(isValidGrammar({ start: ' ' }), false);
+exitIfNot(isEqual)(isValidGrammar({ start: 'a' }), false);
+exitIfNot(isEqual)(isValidGrammar({ start: 'a', rules: undefined }), false);
+exitIfNot(isEqual)(isValidGrammar({ start: 'a', rules: [] }), false);
+exitIfNot(isEqual)(isValidGrammar({ start: 'a', rules: [undefined] }), false);
+exitIfNot(isEqual)(isValidGrammar({ start: 'a', rules: [{ left: { text: undefined }, right: { text: undefined }}] }), false);
+exitIfNot(isEqual)(isValidGrammar({ start: 'a', rules: [{ left: { text: ' ' }, right: { text: undefined } }] }), false);
+exitIfNot(isEqual)(isValidGrammar({ start: 'a', rules: [{ left: { text: undefined }, right: { text: ' ' } }] }), false);
+exitIfNot(isEqual)(isValidGrammar({ start: 'a', rules: [{ left: { text: ' ' }, right: { text: ' ' } }] }), false);
+exitIfNot(isEqual)(isValidGrammar({ start: 'a', rules: [{ left: { text: 'a' }, right: { text: ' ' } }] }), false);
 exitIfNot(isEqual)(isValidGrammar({ start: 'a', rules: [{ left: { text: 'a' }, right: { text: 'b'  }}] }), true);
-exitIfNot(throws)(() => isValidGrammar({ start: 'a', rules: [{ left: { text: ' ' }, right: { text: 'b'  }}] }));
+exitIfNot(isEqual)(isValidGrammar({ start: 'a', rules: [{ left: { text: ' ' }, right: { text: 'b'  }}] }), false);
 exitIfNot(isEqual)(isValidGrammar({ start: 'a', rules: [{ left: { text: '' }, right: { text: 'b' } }] }), true);
-exitIfNot(throws)(() => isValidGrammar({ start: 'a', rules: [{ left: { text: '' }, right: { text: 'b' } },{ left: { text: '' }, right: { text: 'b' } }] }), true);
-exitIfNot(throws)(() => isValidGrammar({ start: 'a', rules: [{ left: { text: '' }, right: { text: '' } }] }));
+exitIfNot(isEqual)(isValidGrammar({ start: 'a', rules: [{ left: { text: '' }, right: { text: 'b' } },{ left: { text: '' }, right: { text: 'b' } }] }), false);
+exitIfNot(isEqual)(isValidGrammar({ start: 'a', rules: [{ left: { text: '' }, right: { text: '' } }] }), false);
+consoleLog('testing isValidGrammar complete');
 
 function isProof(p) {
     exitIfNot(isDefined)(p);

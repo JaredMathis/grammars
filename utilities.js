@@ -2,6 +2,7 @@ const fs = require('fs');
 
 module.exports = {
     arraySkip,
+    consoleLog,
     isArray,
     isArrayIndex,
     isAtLeast,
@@ -14,7 +15,7 @@ module.exports = {
     isStringNonEmpty,
     isUndefined,
     logIndent,
-    consoleLog,
+    processExit,
     range,
     readTextFile,
     summarize,
@@ -42,15 +43,24 @@ function throwMessage(message) {
     throw new Error(message);
 }
 
+/**
+ * This is a function so it's only in one spot.
+ */
+function processExit() {
+    console.log('calling process.exit(1)');
+    process.exit(1);
+}
+
 function exitIfNot(lambda, message, exitLambda) {
-    let log = true;
-    let verbose = false;
+    let log = false;
+    let verbose = true;
+
     if (log)
     if (verbose)
     console.log('exitIfNot: entered; ' + message);
 
     if (!isDefined(exitLambda)) {
-        exitLambda = () => process.exit(1);
+        exitLambda = processExit;
     }
 
     if (!isDefined(lambda)) {
@@ -62,21 +72,46 @@ function exitIfNot(lambda, message, exitLambda) {
         }
     }
 
-    return function () {
+    if (log)
+    if (verbose)
+    console.log('exitIfNot: leaving; ' + message);
+
+    return resultLambda;
+    
+    function resultLambda() {
         let result;
         try {
+            if (log)
+            if (verbose)
+            console.log('  exitIfNot: resultLambda calling lambda ' + message);
+
             result = lambda.apply(null, arguments);
+
+            if (log)
+            if (verbose)
+            console.log('  exitIfNot: resultLambda lambda called ' + message);
+
         } catch (e) {
+
+            if (log)
+            if (verbose)
+            console.log('  exitIfNot: resultLambda exception ' + message);
+
             let errorMessage = getErrorMessage(arguments, result, e);
             throw new Error(errorMessage);
         }
+
         if (!result) {
             let errorMessage = getErrorMessage(arguments, result);
 
+            let logErrorMessage = true;
+
             if (exitLambda !== throwMessage)
-            if (log) {
-                console.log('exitIfNot: exiting');
-                console.log('  ' + errorMessage);
+            if (logErrorMessage) {
+                let l = 
+                console.log('  exitIfNot: calling exitLambda ' + message);
+                console.log('    exitIfNot: errorMessage: ');
+                console.log('    ' + errorMessage);
 
                 let stack = new Error().stack;
                 console.log(stack);
@@ -93,9 +128,10 @@ function exitIfNot(lambda, message, exitLambda) {
 
         if (message) {
             errorMessage += message;
+            errorMessage += '; ';
         }
 
-        errorMessage += '; Called ' + summarize(lambda.name);
+        errorMessage += 'Called ' + summarize(lambda.name);
         errorMessage += '. Expecting truth-y. Got: ' + JSON.stringify(result);
 
         errorMessage += "; Arguments: " + JSON.stringify(args);
@@ -109,12 +145,11 @@ function exitIfNot(lambda, message, exitLambda) {
 (function test() {
     consoleLog('testing exitIfNot');
 
-    let inner = exitIfNot(a => false, 'inner message', throwMessage);
-    exitIfNot(isEqual)(throws(a => inner(123)), 'Error: exitIfNot inner message; arguments: {\"0\":123}');
+    let calls = [];
+    let exitLambda = (a) => calls.push(a);
 
-    let outer = exitIfNot(() => inner(123), 'outer message', throwMessage);
-    let actual = throws(a => outer(234));
-    exitIfNot(isEqual)(actual, 'Error: exitIfNot outer message; arguments: {\"0\":234}; Error: exitIfNot inner message; arguments: {\"0\":123}');
+    exitIfNot(a => false, 'inner message', exitLambda)();
+    exitIfNot(isEqualJson)(calls, ["exitIfNot: inner message; Called [empty string]. Expecting truth-y. Got: false; Arguments: {}"]);
 
     consoleLog('testing exitIfNot complete');
 })();
@@ -369,8 +404,13 @@ function logIndent(lambda) {
     lambda();
     indent--;
 }
-
-// Cannot call exitIfNot
+/**
+ * Logs to console. 
+ * Indents messages. To indent call logIndent(). 
+ * Summarizes the log message.
+ * Cannot call exitIfNot.
+ * @param {*} message 
+ */
 function consoleLog(message) {
     let summary = summarize(message);
 

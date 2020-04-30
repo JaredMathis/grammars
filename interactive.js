@@ -24,7 +24,7 @@ const readlineSync = require('readline-sync');
 
 if (process.argv.length <= 2) {
     console.log('interactive: Needs a command-line argument (file name to process)');
-    process.exit(1);
+    processExit();
 }
 if (process.argv.length > 3) {
     throwNotImplemented();

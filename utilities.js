@@ -110,7 +110,7 @@ function exitIfNot(lambda, message, exitLambda, value) {
 
             let logErrorMessage = true;
 
-            if (exitLambda !== throwMessage)
+            if (exitLambda === processExit)
             if (logErrorMessage) {
                 let l = 
                 console.log('  exitIfNot: calling exitLambda; message: ' + message);
@@ -263,15 +263,19 @@ function isArrayIndex(array, index) {
 }
 
 // TODO: make more efficient
-function isDistinct(array) {
+function isDistinct(array, isEqualLambda) {
     exitIfNot(isArray)(array);
+
+    if (isUndefined(isEqualLambda)) {
+        isEqualLambda = isEqual;
+    }
 
     for (let i of range(array.length)) {
         for (let j of range(array.length)) {
             if (j <= i) {
                 continue;
             }
-            if (array[i] === array[j]) {
+            if (isEqualLambda(array[i], array[j])) {
                 return false;
             }
         }

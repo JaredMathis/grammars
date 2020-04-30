@@ -19,7 +19,7 @@ module.exports = {
     range,
     readTextFile,
     summarize,
-    exitIfNot: exitIfNot,
+    exitIfNot,
     throwNotImplemented,
     throws,
 }
@@ -51,13 +51,17 @@ function processExit() {
     process.exit(1);
 }
 
-function exitIfNot(lambda, message, exitLambda) {
+function exitIfNot(lambda, message, exitLambda, value) {
     let log = false;
     let verbose = true;
 
     if (log)
     if (verbose)
-    console.log('exitIfNot: entered; ' + message);
+    console.log('exitIfNot: entered; ' + JSON.stringify({ value, message }));
+
+    if (isUndefined(value)) {
+
+    }
 
     if (!isDefined(exitLambda)) {
         exitLambda = processExit;

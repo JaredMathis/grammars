@@ -111,7 +111,7 @@ exitIfNot(isEqual)(isValidRule({ left: { text: 'a' } }), false);
 consoleLog('testing isValidRule complete');
 
 function isValidSubstitution(rule, index, previous, current) {
-    let log = false;
+    let log = true;
     let verbose = true;
 
     if (log) consoleLog('isValidSubstitution entered ' + JSON.stringify({ index, previous, current, rule }));
@@ -379,6 +379,9 @@ function isValidProof(grammar, proof, fileName) {
             }
         }
 
+        console.log('here',{substitutionResult, a:isDefined(substitutionResult)})
+        exitIfNot(isDefined, 'expecting substitutionResult to be defined')(substitutionResult)
+
         if (!valid) {
             result.valid = false;
             result.message = 'Invalid substitution: ' + substitutionResult.message;
@@ -509,7 +512,6 @@ function parseGrammar(text, fileName, files, grammar) {
                     fileToGrammar(includeFileName, files, grammar);      
                     
                     return;
-        
                 }
                 
                 if (parts[0] === importToken) {
@@ -541,9 +543,11 @@ function parseGrammar(text, fileName, files, grammar) {
                             before = part[0];
                         }
                     }
+
+                    throwNotImplemented('TODO');
                 }
                 
-                if (parts.includes(ruleToken)) {
+                if (trimmed.indexOf(ruleToken) >= 0) {
         
                     if (log)
                     if (verbose)

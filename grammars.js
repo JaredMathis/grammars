@@ -116,20 +116,25 @@ function isValidSubstitution(rule, index, previous, current) {
 
     if (log) consoleLog('isValidSubstitution entered ' + JSON.stringify({ index, previous, current, rule }));
 
-    let result = true;
+    let result = {
+        success: true,
+    }
 
     logIndent(() => {
 
         if (!isValidRule(rule)) {
-            result = false;
+            result.success = false;
+            result.message = 'invalid rule';
             return;
         }
         if (!isString(previous)) {
-            result = false;
+            result.success = false;
+            result.message = 'previous is not string';
             return;
         }
         if (!isString(current)) {
-            result = false;
+            result.success = false;
+            result.message = 'current is not string';
             return;
         }
 
@@ -142,17 +147,20 @@ function isValidSubstitution(rule, index, previous, current) {
         let b = current.length - right.length;
 
         if (a !== b) {
-            result = false;
+            result.success = false;
+            result.message = 'previous and current lengths are incompatible with rule';
             return;
         }
 
         if (index + left.length > previous.length) {
-            result = false;
+            result.message = 'previous is too short for rule';
+            result.success = false;
             return;
         }
 
         if (index + right.length > current.length) {
-            result = false;
+            result.message = 'current is too short for rule';
+            result.success = false;
             return;
         }
 
@@ -166,11 +174,13 @@ function isValidSubstitution(rule, index, previous, current) {
             consoleLog('left rule into previous ' + JSON.stringify({ previousI, leftI, previousIndex, i }));
 
             if (!isEqual(previousI, leftI)) {
-                result = false;
+                result.success = false;
+                result.message = 'rule left does not substitute into previous';
                 return;
             }
         }
 
+        // TODO: figure out what this for-block is for
         // Before substitution matches
         for (let i of range(index)) {
             let a = previous[i];
@@ -180,7 +190,8 @@ function isValidSubstitution(rule, index, previous, current) {
             consoleLog('before ' + JSON.stringify({ a, b }))
 
             if (!isEqual(a, b)) {
-                result = false;
+                result.success = false;
+                result.message = 'TODO';
                 return;
             }
         }
@@ -194,7 +205,8 @@ function isValidSubstitution(rule, index, previous, current) {
             consoleLog('right rule into current ' + JSON.stringify({ a, b }));
             
             if (!isEqual(a, b)) {
-                result = false;
+                result.success = false;
+                result.message = 'rule right does not substitute into current';
                 return;
             }
         }
@@ -208,7 +220,8 @@ function isValidSubstitution(rule, index, previous, current) {
             consoleLog('right rule into current ' + JSON.stringify({ a, b }));
             
             if (!isEqual(a, b)) {
-                result = false;
+                result.success = false;
+                result.message = 'current does not match does not substitute into current';
                 return;
             }
         }
@@ -221,17 +234,17 @@ function isValidSubstitution(rule, index, previous, current) {
 }
 
 console.log('testing isValidSubstitution');
-exitIfNot(isEqual)(isValidSubstitution({ left: { text: 'a' }, right: { text: 'b' } }, 0, 'a', 'b'), true);
-exitIfNot(isEqual)(isValidSubstitution({ left: { text: 'a' }, right: { text: 'b' } }, 0, 'a', 'c'), false);
-exitIfNot(isEqual)(isValidSubstitution({ left: { text: 'a' }, right: { text: 'b' } }, 0, 'a', ''), false);
-exitIfNot(isEqual)(isValidSubstitution({ left: { text: 'a' }, right: { text: 'b' } }, 0, 'a', 'a'), false);
-exitIfNot(isEqual)(isValidSubstitution({ left: { text: 'a' }, right: { text: 'bb' } }, 0, 'a', 'bb'), true);
-exitIfNot(isEqual)(isValidSubstitution({ left: { text: 'a' }, right: { text: 'bb' } }, 1, 'a', 'bb'), false);
-exitIfNot(isEqual)(isValidSubstitution({ left: { text: 'a' }, right: { text: 'bb' } }, 1, 'aa', 'abb'), true);
-exitIfNot(isEqual)(isValidSubstitution({ left: { text: 'a' }, right: { text: 'bb' } }, 1, 'aaa', 'abba'), true);
-exitIfNot(isEqual)(isValidSubstitution({ left: { text: 'a' }, right: { text: '' } }, 1, 'aaa', 'aa'), true);
-exitIfNot(isEqual)(isValidSubstitution({ left: { text: 'a' }, right: { text: '' } }, 1, 'aaa', 'aaa'), false);
-exitIfNot(isEqual)(isValidSubstitution({ left: { text: 'a' }, right: { text: 'bb' } }, 1, 'aaa', 'abbd'), false);
+exitIfNot(isEqualJson)(isValidSubstitution({ left: { text: 'a' }, right: { text: 'b' } }, 0, 'a', 'b'), {"success":true});
+exitIfNot(isEqualJson)(isValidSubstitution({ left: { text: 'a' }, right: { text: 'b' } }, 0, 'a', 'c'), {"success":false,"message":"rule right does not substitute into current"});
+exitIfNot(isEqualJson)(isValidSubstitution({ left: { text: 'a' }, right: { text: 'b' } }, 0, 'a', ''), {"success":false,"message":"previous and current lengths are incompatible with rule"});
+exitIfNot(isEqualJson)(isValidSubstitution({ left: { text: 'a' }, right: { text: 'b' } }, 0, 'a', 'a'), {"success":false,"message":"rule right does not substitute into current"});
+exitIfNot(isEqualJson)(isValidSubstitution({ left: { text: 'a' }, right: { text: 'bb' } }, 0, 'a', 'bb'), {"success":true});
+exitIfNot(isEqualJson)(isValidSubstitution({ left: { text: 'a' }, right: { text: 'bb' } }, 1, 'a', 'bb'), {"success":false,"message":"previous is too short for rule"});
+exitIfNot(isEqualJson)(isValidSubstitution({ left: { text: 'a' }, right: { text: 'bb' } }, 1, 'aa', 'abb'), {"success":true});
+exitIfNot(isEqualJson)(isValidSubstitution({ left: { text: 'a' }, right: { text: 'bb' } }, 1, 'aaa', 'abba'), {"success":true});
+exitIfNot(isEqualJson)(isValidSubstitution({ left: { text: 'a' }, right: { text: '' } }, 1, 'aaa', 'aa'), {"success":true});
+exitIfNot(isEqualJson)(isValidSubstitution({ left: { text: 'a' }, right: { text: '' } }, 1, 'aaa', 'aaa'), {"success":false,"message":"previous and current lengths are incompatible with rule"});
+exitIfNot(isEqualJson)(isValidSubstitution({ left: { text: 'a' }, right: { text: 'bb' } }, 1, 'aaa', 'abbd'), {"success":false,"message":"current does not match does not substitute into current"});
 console.log('testing isValidSubstitution complete');
 
 function isValidGrammar(grammar) {
@@ -302,75 +315,80 @@ function isProof(p) {
 }
 
 function isValidProof(grammar, proof, fileName) {
+    let log = true;
+
+    if (log) consoleLog('isValidProof entered');
+
     let result = {};
-    result.valid = true;
 
-    let innerMessage;
-    
-    exitIfNot(isValidGrammar)(grammar, fileName);
+    logIndent(() => {
+        result.valid = true;
+        
+        exitIfNot(isValidGrammar)(grammar, fileName);
 
-    exitIfNot(isArray, 'proof')(proof);
-    
-    if (proof.length === 1) {
-        result.valid = false;
-        result.message = 'Proof cannot be 1 step';
-        return result;
-    }
-
-    for (let p of proof) {
-        exitIfNot(isProof, 'expecting proof: ' + JSON.stringify(p))(p);
-    }
-
-    let valid;
-
-    let previous;
-    let current = { text: undefined };
-    for (let p of proof) {
-        previous = current;
-        current = p;
-
-        // The first is current is valid.
-        if (isUndefined(previous.text)) {
-            continue;
+        exitIfNot(isArray, 'proof')(proof);
+        
+        if (proof.length === 1) {
+            result.valid = false;
+            result.message = 'Proof cannot be 1 step';
+            return result;
         }
 
-        valid = false;
-        for (let r of grammar.rules) {
-            for (let i of range(previous.text.length)) {
-                try {
-                    valid = isValidSubstitution(r, i, previous.text, current.text);
-                } catch (e) {
-                    valid = false;
-                    innerMessage = e;
+        for (let p of proof) {
+            exitIfNot(isProof, 'expecting proof: ' + JSON.stringify(p))(p);
+        }
+
+        let valid;
+
+        let substitutionResult;
+        let previous;
+        let current = { text: undefined };
+        for (let p of proof) {
+            previous = current;
+            current = p;
+
+            // The first is current is valid.
+            if (isUndefined(previous.text)) {
+                continue;
+            }
+
+            valid = false;
+            for (let r of grammar.rules) {
+                for (let i of range(previous.text.length)) {
+                    substitutionResult = isValidSubstitution(r, i, previous.text, current.text);
+                    valid = substitutionResult.success;
+                    
+                    if (valid) {
+                        break;
+                    }
                 }
-                
                 if (valid) {
                     break;
                 }
             }
-            if (valid) {
+
+            if (!valid) {
                 break;
             }
         }
 
         if (!valid) {
-            break;
+            result.valid = false;
+            result.message = 'Invalid substitution: ' + substitutionResult.message;
+            result.previous = previous;
+            result.current = current;
+            if (log) consoleLog('invalid ' + JSON.stringify({ substitutionResult, result }));
         }
-    }
-
-    if (!valid) {
-        result.valid = false;
-        result.message = 'Invalid substitution: ' + innerMessage;
-        result.previous = previous;
-        result.current = current;
-    }
+    });
 
     return result;
 }
 
+consoleLog('testing isValidProof');
 exitIfNot(isEqualJson)(isValidProof({ start: 'aa', rules: [{ left: { text: 'a' }, right: { text: 'b' } }]}, [{ text: 'a' }, { text: 'b' }]), { valid: true });
-exitIfNot(isEqualJson)(isValidProof({ start: 'aa', rules: [{ left: { text: 'a' }, right: { text: 'b' } }]}, [{ text: 'a' }, { text: 'c' }]), {"valid":false,"message":"Invalid substitution: Error: exitIfNot isEqual; arguments: {\"0\":\"c\",\"1\":\"b\"}","previous":{"text":"a"},"current":{"text":"c"}});
+exitIfNot(isEqualJson)(isValidProof({ start: 'aa', rules: [{ left: { text: 'a' }, right: { text: 'b' } }]}, [{ text: 'a' }, { text: 'c' }]), {"valid":false,"message":"Invalid substitution: rule right does not substitute into current","previous":{"text":"a"},"current":{"text":"c"}});
 exitIfNot(isEqualJson)(isValidProof({ start: 'aa', rules: [{ left: { text: 'a' }, right: { text: 'b' } }]}, [{ text: 'a' }]), {"valid":false,"message":"Proof cannot be 1 step"});
+consoleLog('testing isValidProof complete');
 
 function addProof(grammar, proof, fileName, lineNumber) {
     // TODO: make sure grammar is self-consistent??

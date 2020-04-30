@@ -109,7 +109,7 @@ function exitIfNot(lambda, message, exitLambda) {
             if (exitLambda !== throwMessage)
             if (logErrorMessage) {
                 let l = 
-                console.log('  exitIfNot: calling exitLambda ' + message);
+                console.log('  exitIfNot: calling exitLambda; message: ' + message);
                 console.log('    exitIfNot: errorMessage: ');
                 console.log('    ' + errorMessage);
 

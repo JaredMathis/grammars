@@ -324,14 +324,21 @@ function isValidProof(grammar, proof, fileName) {
     logIndent(() => {
         result.valid = true;
         
-        exitIfNot(isValidGrammar)(grammar, fileName);
+        if (!isValidGrammar(grammar, fileName)) {
+            result.valid = false;
+            result.message = 'Invalid grammar';
+            if (isDefined(fileName)) {
+                result.message += ' ' + fileName;
+            }
+            return;
+        }
 
         exitIfNot(isArray, 'proof')(proof);
         
         if (proof.length === 1) {
             result.valid = false;
             result.message = 'Proof cannot be 1 step';
-            return result;
+            return;
         }
 
         for (let p of proof) {
@@ -419,8 +426,6 @@ function parseGrammar(text, fileName, files, grammar) {
 
     if (log) consoleLog('parseGrammar entered; ' + summarize({fileName}));
     logIndent(() => {
-
-
         exitIfNot(isString)(text);
 
         if (isUndefined(fileName)) {

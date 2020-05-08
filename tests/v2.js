@@ -11,10 +11,10 @@ let grammars = [
 
 // TODO: throw if file in v2 that isn't in the list.
 
-const { checkFile } = require('./grammars');
+const { fileToGrammar } = require('../grammars');
 
 console.log('Checking v2');
 
 for (let g of grammars) {
-    checkFile(g);
+    fileToGrammar(g);
 }

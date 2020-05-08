@@ -4,7 +4,7 @@ let grammars = [
 
 const { fileToGrammar } = require('./../grammars');
 
-console.log('Checking v1');
+console.log('troubleshoot');
 
 for (let g of grammars) {
     fileToGrammar(g);

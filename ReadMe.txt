@@ -1,5 +1,3 @@
-To run:
+To run all tests:
 
-node grammars.js
-
-Runs grammar-checking on all grammars
+node test

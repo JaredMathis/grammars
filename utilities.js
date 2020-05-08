@@ -2,7 +2,10 @@ const fs = require('fs');
 
 module.exports = {
     arraySkip,
+    choose,
+    chooseAtMost,
     consoleLog,
+    ensureKeyExists,
     isArray,
     isArrayIndex,
     isAtLeast,
@@ -15,6 +18,9 @@ module.exports = {
     isStringNonEmpty,
     isUndefined,
     logIndent,
+    loop,
+    max,
+    onOff,
     processExit,
     range,
     readTextFile,
@@ -26,6 +32,8 @@ module.exports = {
 ;
 
 let indent = 0;
+
+consoleLog('utilities entered');
 
 function throwNotImplemented(message) {
     throw new Error('not implemented: ' + message);
@@ -326,8 +334,13 @@ function readTextFile(fileName) {
     return result;
 }
 
+/**
+ * CAnnot call consoleLog
+ * @param {*} o 
+ */
 function summarize(o) {
-    let log = true;
+    let log = false;
+    if (log) console.log('summarize entered');
 
     let maxStringLength = 150;
 
@@ -368,37 +381,27 @@ function summarize(o) {
         return summarize(result);
     }
 
-    let properties = Object.getOwnPropertyNames(o);
-    if (properties.length >= 1) {
-        let key0 = properties[0];
-        let summary0 = summarizeProperty(o, key0);
+    if (isInteger(o)) {
+        return o.toString();
+    }
 
-        if (properties.length === 1) {
-            result += summary0;
-            return result;
+    let keys = Object.keys(o);
 
-        } else if (properties.length === 2) {
-            let key1 = properties[1];
-            let summary1 = summarizeProperty(o, key1);
-
-            result += " ";
-            result += summary1;
-
-            // TODO: compress two summaries.
-            if (result.length > maxStringLength) {
-                throwNotImplemented('composite summary too large: ' + result);
-            }
-        }
-
-        function summarizeProperty(o, key) {
-            let valueSummary = summarize(o[key]);
-            let summary = key + ": " + valueSummary;
-            return summarize(summary);
-        }
+    if (keys.length === 0) {
+        if (log) console.log('  keys.length===0 ');
+        return "{}";
     } 
+    let summary = keys.map(k => summarizeProperty(o, k)).join(' ');
+    return summarize(summary);
 
-    throwNotImplemented("summarize needs implementation: type: " + typeof(o));
+    function summarizeProperty(o, key) {
+        let valueSummary = summarize(o[key]);
+        let summary = key + ": " + valueSummary;
+        return summarize(summary);
+    }
 }
+
+exitIfNot(isEqual)(summarize({}), "{}");
 
 function isStringNonEmpty(s) {
     return isString(s) 
@@ -429,4 +432,180 @@ function consoleLog(message) {
     }
 
     console.log(result);
+}
+
+function isPositive(i) {
+    return isInteger(i) && i > 0;
+}
+
+function clone(o) {
+    return JSON.parse(JSON.stringify(o));
+}
+
+function max(array) {
+    exitIfNot(isArray)(array);
+
+    exitIfNot(isPositive)(array.length);
+
+    let max = array[0];
+    for (let a of array) {
+        exitIfNot(isInteger)(a);
+
+        if (a > max) {
+            max = a;
+        }
+    }
+
+    return max;
+}
+
+exitIfNot(isEqual)(max([1]), 1)
+exitIfNot(isEqual)(max([1,2]), 2)
+exitIfNot(isEqual)(max([1,2,1]), 2)
+exitIfNot(isEqual)(max([1,2,3,1]), 3)
+exitIfNot(isEqual)(max([1,2,4,3,1]), 4)
+
+function chooseAtMost(array, count) {
+    exitIfNot(isArray)(array);
+    exitIfNot(isInteger)(count);
+
+    if (count > array.length) {
+        count = array.length;
+    }
+
+    return choose(array, count);
+}
+
+function choose(array, count, except) {
+    let log = false;
+    if (log) consoleLog('choose entered ' + JSON.stringify({array,count,except}));
+
+    exitIfNot(isArray)(array);
+    exitIfNot(isPositive)(array.length);
+    
+    exitIfNot(isInteger)(count);
+    exitIfNot(isPositive)(count);
+
+    if (count > array.length) {
+        throwNotImplemented();
+    }
+
+    let result = [];
+
+    logIndent(() => {
+    
+        if (isUndefined(except)) {
+            except = [];
+        }
+        exitIfNot(isArray)(except);
+        for (let e of except) {
+            exitIfNot(isInteger)(e);
+            exitIfNot(isPositive)(e);
+        }
+        
+        for (let i of range(array.length, 1)) {
+            if (except.length >= 1) {
+                let m = max(except);
+        
+                if (i <= m) {
+                    continue;
+                }
+            }
+    
+            if (count === 1) {
+                let choice = except.map(e => array[e - 1]).concat([array[i - 1]]);
+                if (log) consoleLog('choosing single ' + JSON.stringify(choice));
+                result.push(choice);
+                continue;
+            }
+    
+            let e = clone(except);
+            e.push(i);
+            logIndent(() => {
+                for (let choice of choose(array, count - 1, e)) {
+                    if (log) consoleLog('choosing ' + JSON.stringify({choice}));                    
+                    result.push(choice);
+                }
+            });
+        }
+    });
+
+    return result;
+}
+
+console.log('choose testing')
+exitIfNot(isEqualJson)(choose(range(1, 1), 1), [[1]])
+exitIfNot(isEqualJson)(choose(range(2, 1), 1), [[1],[2]])
+exitIfNot(isEqualJson)(choose(range(2, 1), 2), [[1,2]])
+exitIfNot(isEqualJson)(choose(range(3, 1), 1), [[1],[2],[3]])
+exitIfNot(isEqualJson)(choose(range(3, 1), 2), [[1,2],[1,3],[2,3]])
+exitIfNot(isEqualJson)(choose(range(3, 1), 3), [[1,2,3]])
+exitIfNot(isEqualJson)(choose(range(4, 1), 2), [[1,2],[1,3],[1,4],[2,3],[2,4],[3,4]])
+exitIfNot(isEqualJson)(choose(range(4, 1), 3), [[1,2,3],[1,2,4],[1,3,4],[2,3,4]])
+exitIfNot(isEqualJson)(choose(range(4, 1), 4), [[1,2,3,4]])
+
+function onOff(array, on, off) {
+    exitIfNot(isArray)(array);
+
+    let remaining = array.slice(1);
+    
+    let result = [];
+
+    if (array.length === 0) {
+        result.push([]);
+    } else {
+        for (let b of onOff(remaining, on, off)) {
+            result.push([on(array[0])].concat(b));
+            result.push([off(array[0])].concat(b));
+        }        
+    }
+
+    return result;
+}
+
+exitIfNot(isEqualJson)(onOff([], a => a, a => -a), [[]])
+exitIfNot(isEqualJson)(onOff([1], a => a, a => -a), [[1], [-1]])
+exitIfNot(isEqualJson)(onOff([1,2], a => a, a => -a), [[1,2],[-1,2],[1,-2],[-1,-2]])
+exitIfNot(isEqualJson)(onOff([1,2,3], a => a, a => -a), [[1,2,3],[-1,2,3],[1,-2,3],[-1,-2,3],[1,2,-3],[-1,2,-3],[1,-2,-3],[-1,-2,-3]])
+
+function ensureKeyExists(o, key, valueLambda) {
+    let log = false;
+
+    if (log) consoleLog('ensureKeyExists entered');
+
+    exitIfNot(isDefined)(o);
+    exitIfNot(isDefined)(key);
+
+    logIndent(() => {
+        if (!o.hasOwnProperty(key)) {
+            let value = valueLambda();
+            if (log) consoleLog(value);
+            o[key] = value;
+        }
+    })
+}
+
+(function test() {
+    let o = {};
+    ensureKeyExists(o, 1, () => 2);
+    exitIfNot(isEqualJson)(o, {"1":2});
+
+    let a = [];
+    ensureKeyExists(a, 1, () => 2);
+    exitIfNot(isEqualJson)(a, [undefined, 2]);
+
+    let result = {};
+    let pJson = "123";
+    ensureKeyExists(result, pJson, function () { return {} });
+    exitIfNot(isEqualJson)(result, {"123":{}});
+})();
+
+function loop(array, lambda) {
+    exitIfNot(isArray)(array);
+
+    logIndent(() => {
+        for (let a of array) {
+            lambda(a);
+        }
+    });
 }

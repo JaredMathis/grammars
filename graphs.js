@@ -198,3 +198,175 @@ exitIfNot(isEqual)(isValidEdge([1]), false);
 // Cannot have 3 vertices
 exitIfNot(isEqual)(isValidEdge([1,2,3]), false);
 console.log('testing isValidEdge complete')
+
+function undirectedPathAttempt(graph, a, b) {
+    return undirectedPathAttempt(graph, a, b);
+}
+
+function degree(graph, v) {
+    return neighbors(graph, v).length;
+}
+
+exitIfNot(isEqual)(degree([[1, 2]], 1), 1);
+exitIfNot(isEqual)(degree([[1, 2], [2, 3]], 1), 1);
+exitIfNot(isEqual)(degree([[1, 2], [1, 3]], 1), 2);
+
+function hasNeighbors(graph, v) {
+    return degree(graph, v) > 0;
+}
+
+function smallestNeighbor(graph, current) {
+    exitIfNot(hasNeighbors)(graph, current);
+
+    let smallest;
+    if (isValidVertex(smallest)){
+        throwNotImplemented('initial value of smallest should not be a vertex');
+    }
+    for (let n of neighbors(graph, current)) {
+        if (isUndefined(smallest)) {
+            smallest = n;
+            continue;
+        }
+        if (n < smallest) {
+            smallest = n;
+        }
+    }
+    return smallest;
+}
+
+exitIfNot(isEqual)(smallestNeighbor([[1, 2]], 1), 2);
+exitIfNot(isEqual)(smallestNeighbor([[1, 2], [2, 3]], 1), 2);
+exitIfNot(isEqual)(smallestNeighbor([[1, 2], [2, 3]], 2), 1);
+exitIfNot(isEqual)(smallestNeighbor([[1, 2], [2, 3]], 3), 2);
+exitIfNot(isEqual)(smallestNeighbor([[1, 2], [1, 3]], 1), 2);
+exitIfNot(isEqual)(smallestNeighbor([[1, 2], [1, 3]], 2), 1);
+exitIfNot(isEqual)(smallestNeighbor([[1, 2], [1, 3]], 3), 1);
+
+function vertices(graph) {
+    exitIfNot(isValidGraph)(graph); 
+    
+    let verticesLookup = {};
+    for (let edge of graph) {
+        let a = edge[0];
+        let b = edge[1];
+        for (let v of [a, b]) {
+            if (verticesLookup[v]) {
+                continue;
+            }
+            verticesLookup[v] = true;
+        }
+    }
+
+    let result = Object.keys(verticesLookup);
+    result.sort();
+
+    return result;
+}
+
+exitIfNot(isEqual)(vertices([[1,2]]), [1,2]);
+exitIfNot(isEqual)(vertices([[1,2],[2,3]]), [1,2,3]);
+exitIfNot(isEqual)(vertices([[1,2],[2,3],[1,3]]), [1,2,3]);
+exitIfNot(isEqual)(vertices([[1,2],[2,3],[1,4]]), [1,2,3,4]);
+exitIfNot(isEqual)(vertices([[1,2],[2,3],[1,5]]), [1,2,3,5]);
+
+function vertexCount(graph) {
+    exitIfNot(isValidGraph)(graph);
+
+    return vertices(graph).length;
+}
+
+exitIfNot(isEqual)(vertexCount([[1,2]]), 2);
+exitIfNot(isEqual)(vertexCount([[1,2],[2,3]]), 3);
+exitIfNot(isEqual)(vertexCount([[1,2],[2,3],[1,3]]), 3);
+exitIfNot(isEqual)(vertexCount([[1,2],[2,3],[1,4]]), 4);
+exitIfNot(isEqual)(vertexCount([[1,2],[2,3],[1,5]]), 4);
+
+/**
+ * @param {*} graph 
+ * @param {*} start 
+ * @param {*} minimum 
+ * @param {*} chooser Accepts a graph and vertex; Needs to be deterministic
+ */
+function todo(graph, start, minimum, chooser) {
+    let smallest;
+
+    let smallest = greatest(getChoices, smallestGreaterThan);
+
+    return smallest;
+}
+
+
+function greatest(getChoices, greater) {
+    exitIfNot(isDefined)(getChoices);
+    exitIfNot(isDefined)(greater);
+
+    let result;
+    for (let choice of getChoices()) {
+        if (greater(choice, result)) {
+            result = choice;
+        }
+    }
+
+    // Error if there were no choices.
+    exitIfNot(isDefined)(result);
+
+    return result;
+}
+
+let current;
+
+let next = smallestGreaterThan(graph, current, current, chooser);
+if (isUndefined(next)) {
+    // back up
+    // of all choices that lead to current, choose smallest
+}
+
+function next(graph, current, previous, chooser) {
+    let afterCurrent = after(graph, current, previous, chooser);
+
+    if (isDefined(afterCurrent)) {
+        return afterCurrent;
+    }
+
+    
+}
+
+function* getBefore(graph, current, minimum, chooser) {
+    for (let v of vertices(graph)) {
+        let afterV = after(graph, v, chooser);
+        if (afterV === current) {
+            yield v;
+        }
+    }
+}
+
+function after(graph, current, minimum, chooser) {
+    let smallest;
+
+    smallest = greatest(getChoices(graph, current, chooser), smallestGreaterThan(minimum));
+
+    return smallest;
+}
+
+function smallestGreaterThan(minimum) {
+    exitIfNot(isInteger)(minimum);
+
+    return function greaterThan(choice, candidate) {
+        exitIfNot(isInteger)(choice);
+        return candidate > minimum && choice > candidate;
+    }
+}
+
+function* getChoices(graph, start, chooser) {
+    let current = start;
+
+    let remainingChoices = vertexCount(graph);
+    while (remainingChoices >= 0) {
+        remainingChoices--;
+
+        let next = chooser(graph, current);
+        yield next;
+
+        current = next;
+    }
+}

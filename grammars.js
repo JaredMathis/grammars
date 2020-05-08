@@ -22,6 +22,7 @@ const {
     isStringNonEmpty,
     isUndefined,
     logIndent,
+    loop,
     range,
     readTextFile,
     summarize,
@@ -114,13 +115,13 @@ function isValidSubstitution(rule, index, previous, current) {
     let log = true;
     let verbose = true;
 
-    if (log) consoleLog('isValidSubstitution entered ' + JSON.stringify({ index, previous, current, rule }));
+    if (log) consoleLog('isValidSubstitution entered');
 
     let result = {
         success: true,
     }
-
     logIndent(() => {
+        if (log) consoleLog({ index, previous, current, rule });
 
         if (!isValidRule(rule)) {
             result.success = false;
@@ -141,12 +142,9 @@ function isValidSubstitution(rule, index, previous, current) {
         let left = rule.left.text;
         let right = rule.right.text;
 
-        if (log) consoleLog(JSON.stringify({ left, right }));
+        if (log) consoleLog({ left, right });
 
-        let a = previous.length - left.length;
-        let b = current.length - right.length;
-
-        if (a !== b) {
+        if (previous.length - left.length !== current.length - right.length) {
             result.success = false;
             result.message = 'previous and current lengths are incompatible with rule';
             return;
@@ -316,12 +314,14 @@ function isProof(p) {
 
 function isValidProof(grammar, proof, fileName) {
     let log = true;
+    let verbose = true;
 
-    if (log) consoleLog('isValidProof entered');
+    if (log) consoleLog('isValidProof entered')
 
     let result = {};
 
     logIndent(() => {
+
         result.valid = true;
         
         if (!isValidGrammar(grammar, fileName)) {
@@ -350,36 +350,46 @@ function isValidProof(grammar, proof, fileName) {
         let substitutionResult;
         let previous;
         let current = { text: undefined };
-        for (let p of proof) {
+        if (log) consoleLog('checking each proof step');
+        loop(proof, p => {
             previous = current;
             current = p;
 
             // The first is current is valid.
             if (isUndefined(previous.text)) {
-                continue;
+                if (log) 
+                if (verbose)
+                consoleLog('first proof step is always valid')
+                return;
             }
 
             valid = false;
-            for (let r of grammar.rules) {
-                for (let i of range(previous.text.length)) {
+            if (log) 
+            if (verbose)
+            consoleLog({valid});
+            loop(grammar.rules, r => {
+                loop(previous.text, (t, i) => {
                     substitutionResult = isValidSubstitution(r, i, previous.text, current.text);
+                    if (log) 
+                    if (verbose)
+                    consoleLog({substitutionResult});
                     valid = substitutionResult.success;
                     
                     if (valid) {
-                        break;
+                        return true;
                     }
-                }
+                }, log && verbose);
                 if (valid) {
-                    break;
+                    return true;
                 }
-            }
+            }, log && verbose);
 
             if (!valid) {
-                break;
+                return true;
             }
-        }
+        }, log && verbose);
 
-        console.log('here',{substitutionResult, a:isDefined(substitutionResult)})
+        if (log) consoleLog({valid, substitutionResult});
         exitIfNot(isDefined, 'expecting substitutionResult to be defined')(substitutionResult)
 
         if (!valid) {
@@ -389,15 +399,17 @@ function isValidProof(grammar, proof, fileName) {
             result.current = current;
             if (log) consoleLog('invalid ' + JSON.stringify({ substitutionResult, result }));
         }
+
+        if (log) consoleLog({result});
     });
 
     return result;
 }
 
 consoleLog('testing isValidProof');
-exitIfNot(isEqualJson)(isValidProof({ start: 'aa', rules: [{ left: { text: 'a' }, right: { text: 'b' } }]}, [{ text: 'a' }, { text: 'b' }]), { valid: true });
-exitIfNot(isEqualJson)(isValidProof({ start: 'aa', rules: [{ left: { text: 'a' }, right: { text: 'b' } }]}, [{ text: 'a' }, { text: 'c' }]), {"valid":false,"message":"Invalid substitution: rule right does not substitute into current","previous":{"text":"a"},"current":{"text":"c"}});
-exitIfNot(isEqualJson)(isValidProof({ start: 'aa', rules: [{ left: { text: 'a' }, right: { text: 'b' } }]}, [{ text: 'a' }]), {"valid":false,"message":"Proof cannot be 1 step"});
+exitIfNot(isEqualJson)(isValidProof({ rules: [{ left: { text: 'a' }, right: { text: 'b' } }]}, [{ text: 'a' }, { text: 'b' }]), { valid: true });
+exitIfNot(isEqualJson)(isValidProof({ rules: [{ left: { text: 'a' }, right: { text: 'b' } }]}, [{ text: 'a' }, { text: 'c' }]), {"valid":false,"message":"Invalid substitution: rule right does not substitute into current","previous":{"text":"a"},"current":{"text":"c"}});
+exitIfNot(isEqualJson)(isValidProof({ rules: [{ left: { text: 'a' }, right: { text: 'b' } }]}, [{ text: 'a' }]), {"valid":false,"message":"Proof cannot be 1 step"});
 consoleLog('testing isValidProof complete');
 
 function addProof(grammar, proof, fileName, lineNumber) {

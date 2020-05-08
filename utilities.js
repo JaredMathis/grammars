@@ -146,7 +146,22 @@ function exitIfNot(lambda, message, exitLambda, value) {
         errorMessage += 'Called ' + summarize(lambda.name);
         errorMessage += '. Expecting truth-y. Got: ' + JSON.stringify(result);
 
-        errorMessage += "; Arguments: " + JSON.stringify(args);
+        errorMessage += ";\n";
+        let prefix = "      ";
+        errorMessage += prefix + "Arguments:\n";
+        prefix += "  ";
+        for (let index in args) {
+            errorMessage += prefix;
+            let m = {};
+            m[index] = args[index];
+            errorMessage += JSON.stringify(m);
+            errorMessage += "\n";
+            index++;
+        }
+        if (args.length === 0) {
+            errorMessage += prefix;
+            errorMessage += "{}";
+        }
 
         errorMessage += extra;
 
@@ -158,10 +173,10 @@ function exitIfNot(lambda, message, exitLambda, value) {
     consoleLog('testing exitIfNot');
 
     let calls = [];
-    let exitLambda = (a) => calls.push(a);
+    let exitLambda = (a) => calls.push(a.split('\n').join('\\n'));
 
     exitIfNot(a => false, 'inner message', exitLambda)();
-    exitIfNot(isEqualJson)(calls, ["exitIfNot: inner message; Called [empty string]. Expecting truth-y. Got: false; Arguments: {}"]);
+    exitIfNot(isEqualJson)(calls, ["exitIfNot: inner message; Called [empty string]. Expecting truth-y. Got: false;\\n      Arguments:\\n        {}"]);
 
     consoleLog('testing exitIfNot complete');
 })();
@@ -351,6 +366,15 @@ function summarize(o) {
         return result;
     }
 
+    if (o === false) {
+        result += "false";
+        return result;
+    }
+    if (o === true) {
+        result += "true";
+        return result;
+    }
+
     if (isString(o)) {
         if (o.length === 0) {
             result += "[empty string]";
@@ -375,7 +399,7 @@ function summarize(o) {
         result += ' items';
         let i = 0;
         while (result.length < maxStringLength && i < o.length) {
-            result += ` [${i}]=` + summarize(JSON.stringify(o[0]));
+            result += ` [${i}]=` + summarize(JSON.stringify(o[i]));
             i++;
         }
         return summarize(result);
@@ -389,9 +413,8 @@ function summarize(o) {
 
     if (keys.length === 0) {
         if (log) console.log('  keys.length===0 ');
-        return "{}";
     } 
-    let summary = keys.map(k => summarizeProperty(o, k)).join(' ');
+    let summary = "{" + keys.map(k => summarizeProperty(o, k)).join(', ') + "}";
     return summarize(summary);
 
     function summarizeProperty(o, key) {
@@ -402,6 +425,8 @@ function summarize(o) {
 }
 
 exitIfNot(isEqual)(summarize({}), "{}");
+exitIfNot(isEqual)(summarize(false), "false");
+exitIfNot(isEqual)(summarize([1,2,3]), "array 3 items [0]=1 [1]=2 [2]=3");
 
 function isStringNonEmpty(s) {
     return isString(s) 
@@ -427,6 +452,7 @@ function consoleLog(message) {
 
     let result = summary;
 
+    // Indent left
     for (let i of range(indent)) {
         result = "  " + result;
     }
@@ -600,12 +626,43 @@ function ensureKeyExists(o, key, valueLambda) {
     exitIfNot(isEqualJson)(result, {"123":{}});
 })();
 
-function loop(array, lambda) {
+function loop(array, lambda, log) {
+    if (log) consoleLog('loop');
+
+    if (isString(array)) {
+        array = [...array];
+    }
+
     exitIfNot(isArray)(array);
 
     logIndent(() => {
-        for (let a of array) {
-            lambda(a);
+        let index = 0;
+
+        for (let item of array) {
+            if (log) consoleLog({index, item});
+
+            let b;
+            logIndent(() => {
+                b = lambda(item, index);
+            });
+            if (b) {
+                break;
+            }
+            index++;
         }
+
+        if (log) consoleLog(index + ' loop iterations');
     });
 }
+
+// Test the console-logging of loop()
+(function test() {
+    let consoleLogOld = consoleLog;
+
+    let logs = [];
+    consoleLog = m => logs.push(m);
+    loop([3,4], a => {}, true);
+    exitIfNot(isEqualJson)(logs, ["loop",{"index":0,"item":3},{"index":1,"item":4},"2 loop iterations"]);
+
+    consoleLog = consoleLogOld;
+})();

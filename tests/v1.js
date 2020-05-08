@@ -9,10 +9,10 @@ let grammars = [
     'v1/subtract.g',
 ];
 
-const { checkFile } = require('./grammars');
+const { fileToGrammar } = require('./../grammars');
 
 console.log('Checking v1');
 
 for (let g of grammars) {
-    checkFile(g);
+    fileToGrammar(g);
 }

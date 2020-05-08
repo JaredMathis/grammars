@@ -1,2 +1,1 @@
-require('./test-v1');
-require('./test-v2');
+require('./tests/all');

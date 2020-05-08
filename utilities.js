@@ -33,8 +33,6 @@ module.exports = {
 
 let indent = 0;
 
-consoleLog('utilities entered');
-
 function throwNotImplemented(message) {
     throw new Error('not implemented: ' + message);
 }
@@ -62,17 +60,21 @@ function processExit() {
 function exitIfNot(lambda, message, exitLambda, value) {
     let log = false;
     let verbose = true;
+    let logErrorMessage = true;
+    let logErrorStack = false;
 
     if (log)
     if (verbose)
     console.log('exitIfNot: entered; ' + JSON.stringify({ value, message }));
 
-    if (isUndefined(value)) {
-
-    }
-
     if (!isDefined(exitLambda)) {
         exitLambda = processExit;
+    }
+
+    if (lambda === false) {
+        lambda = () => false;
+        resultLambda();
+        return;
     }
 
     if (!isDefined(lambda)) {
@@ -116,17 +118,17 @@ function exitIfNot(lambda, message, exitLambda, value) {
         if (!result) {
             let errorMessage = getErrorMessage(arguments, result);
 
-            let logErrorMessage = true;
-
-            if (exitLambda === processExit)
-            if (logErrorMessage) {
-                let l = 
-                console.log('  exitIfNot: calling exitLambda; message: ' + message);
-                console.log('    exitIfNot: errorMessage: ');
-                console.log('    ' + errorMessage);
-
-                let stack = new Error().stack;
-                console.log(stack);
+            if (exitLambda === processExit) {
+                if (logErrorMessage) {
+                    let l = 
+                    console.log('  exitIfNot: calling exitLambda; message: ' + message);
+                    console.log('    errorMessage: ');
+                    console.log('      ' + errorMessage);
+                }
+                if (logErrorStack) {                
+                    let stack = new Error().stack;
+                    console.log(stack);
+                }
             }
             
             exitLambda(errorMessage);
@@ -136,7 +138,7 @@ function exitIfNot(lambda, message, exitLambda, value) {
     function getErrorMessage(args, result, inner) {
         let extra = isDefined(inner) ? "; " + inner : "";
 
-        let errorMessage = "exitIfNot: ";
+        let errorMessage = "";
 
         if (message) {
             errorMessage += message;
@@ -147,7 +149,7 @@ function exitIfNot(lambda, message, exitLambda, value) {
         errorMessage += '. Expecting truth-y. Got: ' + JSON.stringify(result);
 
         errorMessage += ";\n";
-        let prefix = "      ";
+        let prefix = "    ";
         errorMessage += prefix + "Arguments:\n";
         prefix += "  ";
         for (let index in args) {
@@ -169,17 +171,6 @@ function exitIfNot(lambda, message, exitLambda, value) {
     }
 }
 
-(function test() {
-    consoleLog('testing exitIfNot');
-
-    let calls = [];
-    let exitLambda = (a) => calls.push(a.split('\n').join('\\n'));
-
-    exitIfNot(a => false, 'inner message', exitLambda)();
-    exitIfNot(isEqualJson)(calls, ["exitIfNot: inner message; Called [empty string]. Expecting truth-y. Got: false;\\n      Arguments:\\n        {}"]);
-
-    consoleLog('testing exitIfNot complete');
-})();
 
 function isEqual(a, b) {
     exitIfNot(isDefined)(a);
@@ -313,36 +304,39 @@ exitIfNot(isEqual)(isDistinct([1,2]), true);
 exitIfNot(isEqual)(isDistinct([1,2,'2']), true);
 exitIfNot(isEqual)(isDistinct([1,2,2]), false);
 
-function* arraySkip(array, skipCount) {
+function arraySkip(array, skipCount) {
     let log = false;
 
     if (log) console.log('arraySkip entered ' + JSON.stringify({array, skipCount}))
 
     exitIfNot(isArray)(array);
+    exitIfNot(isInteger)(skipCount);
 
     if (array.length === 0) {
-        return skipCount === 0;
+        exitIfNot(isEqual)(skipCount, 0);
+        return [];
     }    
+
     exitIfNot(isArrayIndex)(array, skipCount);
 
+    let result = [];
     for (let i = skipCount; i < array.length; i++) {
-        yield array[i];
+        result.push(array[i]);
     }
+
+    return result;
 }
 
-exitIfNot(isEqualJson)([1], [...arraySkip([1], 0)]);
-exitIfNot(isEqualJson)([2], [...arraySkip([1, 2], 1)]);
-exitIfNot(isEqualJson)([], [...arraySkip([], 0)]);
-exitIfNot(throws(() => [...arraySkip([], -1)]));
-exitIfNot(throws(() => [...arraySkip([], 1)]));
-exitIfNot(isEqual)(throws(() => [...arraySkip([], 0)]), false);
+exitIfNot(isEqualJson)([1], arraySkip([1], 0));
+exitIfNot(isEqualJson)([2], arraySkip([1, 2], 1));
+exitIfNot(isEqualJson)([], arraySkip([], 0));
 
 // TODO: replace fs.existsSync with this function
 function readTextFile(fileName) {
     exitIfNot(isString)(fileName);
 
     if (!fs.existsSync(fileName)) {
-        throw new Error('readTextFile: file does not exist: ' + summarize(fileName));
+        throw new Error(summarize('readTextFile: file does not exist: ' + fileName));
     }
 
     let result = fs.readFileSync(fileName, 'utf8');
@@ -380,6 +374,11 @@ function summarize(o) {
             result += "[empty string]";
             return result;
         }
+
+        if (o === " ") {
+            o = `"${o}"`;
+        }
+        
         let continuation = "...";
 
         if (o.length > maxStringLength) {
@@ -423,10 +422,6 @@ function summarize(o) {
         return summarize(summary);
     }
 }
-
-exitIfNot(isEqual)(summarize({}), "{}");
-exitIfNot(isEqual)(summarize(false), "false");
-exitIfNot(isEqual)(summarize([1,2,3]), "array 3 items [0]=1 [1]=2 [2]=3");
 
 function isStringNonEmpty(s) {
     return isString(s) 
@@ -559,16 +554,6 @@ function choose(array, count, except) {
     return result;
 }
 
-console.log('choose testing')
-exitIfNot(isEqualJson)(choose(range(1, 1), 1), [[1]])
-exitIfNot(isEqualJson)(choose(range(2, 1), 1), [[1],[2]])
-exitIfNot(isEqualJson)(choose(range(2, 1), 2), [[1,2]])
-exitIfNot(isEqualJson)(choose(range(3, 1), 1), [[1],[2],[3]])
-exitIfNot(isEqualJson)(choose(range(3, 1), 2), [[1,2],[1,3],[2,3]])
-exitIfNot(isEqualJson)(choose(range(3, 1), 3), [[1,2,3]])
-exitIfNot(isEqualJson)(choose(range(4, 1), 2), [[1,2],[1,3],[1,4],[2,3],[2,4],[3,4]])
-exitIfNot(isEqualJson)(choose(range(4, 1), 3), [[1,2,3],[1,2,4],[1,3,4],[2,3,4]])
-exitIfNot(isEqualJson)(choose(range(4, 1), 4), [[1,2,3,4]])
 
 function onOff(array, on, off) {
     exitIfNot(isArray)(array);
@@ -632,8 +617,10 @@ function loop(array, lambda, log) {
     if (isString(array)) {
         array = [...array];
     }
-
     exitIfNot(isArray)(array);
+
+    exitIfNot(isDefined)(lambda);
+    exitIfNot(isDefined)(log);
 
     logIndent(() => {
         let index = 0;

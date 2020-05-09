@@ -336,7 +336,8 @@ function readTextFile(fileName) {
     exitIfNot(isString)(fileName);
 
     if (!fs.existsSync(fileName)) {
-        throw new Error(summarize('readTextFile: file does not exist: ' + fileName));
+        consoleLog('readTextFile: file does not exist: ' + fileName);
+        processExit();
     }
 
     let result = fs.readFileSync(fileName, 'utf8');

@@ -7,6 +7,7 @@ let grammars = [
     'v1/parenthesis.g',
     'v1/primes.g',
     'v1/subtract.g',
+    'v1/test.g',
 ];
 
 const { fileToGrammar } = require('./../grammars');

@@ -11,9 +11,16 @@ let grammars = [
 ];
 
 const { fileToGrammar } = require('./../grammars');
+const { 
+    consoleLog,
+    loop,
+} = require('./../utilities');
 
-console.log('Checking v1');
+let log = true;
 
-for (let g of grammars) {
+if (log) consoleLog('Checking v1');
+
+loop(grammars, g => {
+    if (log) consoleLog({g})
     fileToGrammar(g);
-}
+}, log);

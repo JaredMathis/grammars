@@ -1,6 +1,7 @@
 let {
     consoleLog,
     isEqualJson,
+    isEqual,
     exitIfNot,
 } = require('../../utilities');
 
@@ -54,7 +55,7 @@ exitIfNot(isEqualJson)(isValidProof({ rules: [{ left: { text: 'a' }, right: { te
 
     let actual = isValidProof(grammar, proof, fileName);
 
-    consoleLog({actual});
+    exitIfNot(isEqualJson)(actual, {"valid":true});
 })();
 
 consoleLog('testing isValidProof complete');

@@ -365,6 +365,7 @@ function isProof(p) {
 }
 
 function isValidProof(grammar, proof, fileName) {
+    let error = true;
     let log = false;
     let verbose = false;
 
@@ -372,10 +373,10 @@ function isValidProof(grammar, proof, fileName) {
 
     if (log) consoleLog('isValidProof entered');
     logIndent(() => {
+        let proofTexts = proof.map(p => p.text);
+
         if (log) {
-            let proofTexts = proof.map(p => p.text);
-            consoleLog({proofTexts});
-            if (verbose) console.log(JSON.stringify({grammar}, ' ', 2));
+            if (verbose) consoleLog(JSON.stringify({grammar}, ' ', 2));
         }
 
         result.valid = true;
@@ -448,7 +449,11 @@ function isValidProof(grammar, proof, fileName) {
         }, log && verbose);
 
         result.valid = valid;
-        if (log) {
+        if (error && !result.valid || log) {
+            if (!log) {
+                consoleLog('isValidProof');
+            }
+            consoleLog({proofTexts});
             consoleLog({substitutionResult});
             consoleLog({result});
         }
@@ -707,21 +712,25 @@ function parseGrammar(text, fileName, files, grammar) {
 // grammar is optional
 // returns grammar
 function fileToGrammar(fileName, files, grammar) {
-    let log = false;
+    let log = true;
 
     if (log) 
-    consoleLog('fileToGrammar entered', { 
-        fileName});
+    consoleLog('fileToGrammar entered; fileName: ' + fileName);
 
-    exitIfNot(isString, 'fileToGrammar: fileName needs to be specified')(fileName);
+    logIndent(() => {
+        exitIfNot(isString, 'fileToGrammar: fileName needs to be specified')(fileName);
 
-    let text = readTextFile(fileName);
+        let text = readTextFile(fileName);
+
+        if (log) 
+        consoleLog('fileToGrammar calling parseGrammar', { 
+            fileName, 'text.length': text.length, files, grammar});
+        
+        grammar = parseGrammar(text, fileName, files, grammar);            
+    });
 
     if (log) 
-    consoleLog('fileToGrammar calling parseGrammar', { 
-        fileName, 'text.length': text.length, files, grammar});
-    
-    grammar = parseGrammar(text, fileName, files, grammar);
+    consoleLog('fileToGrammar leaving; fileName: ' + fileName);
 
     return grammar;
 }

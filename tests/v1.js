@@ -1,26 +1,20 @@
-let grammars = [
-    'v1/addition.g',
-    'v1/boolean.g',
-    'v1/comparison.g',
-    'v1/multiplication.g',
-    'v1/multiply.g',
-    'v1/parenthesis.g',
-    'v1/primes.g',
-    'v1/subtract.g',
-    'v1/test.g',
-];
-
-const { fileToGrammar } = require('./../grammars');
-const { 
-    consoleLog,
-    loop,
-} = require('./../utilities');
-
 let log = true;
 
-if (log) consoleLog('Checking v1');
+let {
+    directory,
+    fileNames,
+} = require('../v1/_all');
 
-loop(grammars, g => {
-    if (log) consoleLog({g})
-    fileToGrammar(g);
+const { fileToGrammar } = require('../grammars');
+
+const { 
+    loop,
+} = require('../utilities');
+
+const path = require('path');
+
+loop(fileNames, g => {
+    let pathName = path.join(directory, g);
+    fileToGrammar(pathName);
 }, log);
+

@@ -262,20 +262,6 @@ function isValidSubstitution(rule, index, previous, current) {
     return result;  
 }
 
-console.log('testing isValidSubstitution');
-exitIfNot(isEqualJson)(isValidSubstitution({ left: { text: 'a' }, right: { text: 'b' } }, 0, 'a', 'b'), {"success":true});
-exitIfNot(isEqualJson)(isValidSubstitution({ left: { text: 'a' }, right: { text: 'b' } }, 0, 'a', 'c'), {"success":false,"message":"rule right does not substitute into current"});
-exitIfNot(isEqualJson)(isValidSubstitution({ left: { text: 'a' }, right: { text: 'b' } }, 0, 'a', ''), {"success":false,"message":"previous and current lengths are incompatible with rule"});
-exitIfNot(isEqualJson)(isValidSubstitution({ left: { text: 'a' }, right: { text: 'b' } }, 0, 'a', 'a'), {"success":false,"message":"rule right does not substitute into current"});
-exitIfNot(isEqualJson)(isValidSubstitution({ left: { text: 'a' }, right: { text: 'bb' } }, 0, 'a', 'bb'), {"success":true});
-exitIfNot(isEqualJson)(isValidSubstitution({ left: { text: 'a' }, right: { text: 'bb' } }, 1, 'a', 'bb'), {"success":false,"message":"previous is too short for rule"});
-exitIfNot(isEqualJson)(isValidSubstitution({ left: { text: 'a' }, right: { text: 'bb' } }, 1, 'aa', 'abb'), {"success":true});
-exitIfNot(isEqualJson)(isValidSubstitution({ left: { text: 'a' }, right: { text: 'bb' } }, 1, 'aaa', 'abba'), {"success":true});
-exitIfNot(isEqualJson)(isValidSubstitution({ left: { text: 'a' }, right: { text: '' } }, 1, 'aaa', 'aa'), {"success":true});
-exitIfNot(isEqualJson)(isValidSubstitution({ left: { text: 'a' }, right: { text: '' } }, 1, 'aaa', 'aaa'), {"success":false,"message":"previous and current lengths are incompatible with rule"});
-exitIfNot(isEqualJson)(isValidSubstitution({ left: { text: 'a' }, right: { text: 'bb' } }, 1, 'aaa', 'abbd'), {"success":false,"message":"current does not match does not substitute into current"});
-console.log('testing isValidSubstitution complete');
-
 function isValidGrammar(grammar) {
     let log = false;
 
@@ -373,7 +359,7 @@ function isValidProof(grammar, proof, fileName) {
 
     if (log) consoleLog('isValidProof entered');
     logIndent(() => {
-        let proofTexts = proof.map(p => p.text);
+        let proofSteps = proof.map(p => p.text);
 
         if (log) {
             if (verbose) consoleLog(JSON.stringify({grammar}, ' ', 2));
@@ -451,10 +437,15 @@ function isValidProof(grammar, proof, fileName) {
         result.valid = valid;
         if (error && !result.valid || log) {
             if (!log) {
-                consoleLog('isValidProof');
+                consoleLog('isValidProof error');
             }
-            consoleLog({proofTexts});
-            consoleLog({substitutionResult});
+            consoleLog({fileName});
+            let grammarRules = grammar.rules.map(r => `${r.left.text} | ${r.right.text}`).join(",");
+            consoleLog({grammarRules})
+            consoleLog({proofSteps});
+            consoleLog({previous});
+            consoleLog({current});
+            consoleLog('cannot derive current from previous');
             consoleLog({result});
         }
         exitIfNot(result.valid);
@@ -712,7 +703,7 @@ function parseGrammar(text, fileName, files, grammar) {
 // grammar is optional
 // returns grammar
 function fileToGrammar(fileName, files, grammar) {
-    let log = true;
+    let log = false;
 
     if (log) 
     consoleLog('fileToGrammar entered; fileName: ' + fileName);
@@ -892,6 +883,7 @@ function addProofToFile(fileName, proof) {
 // TOOD: check for atomic symbols/ambguity
 // For example if [m] is a sequence, it should always appear together
 // If another token is a subtoken of any token-pair
-// for example a[b c]d and [bc] then ambiguous
+// for example, given 3 tokens a[b c]d and [bc] then ambiguous
 
-consoleLog('grammars complete');
+// TODO: Use a space as a separator for grammar rules, rather than |
+// aa ab vs aa | ab

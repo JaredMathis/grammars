@@ -1,4 +1,5 @@
 const fs = require('fs');
+const path = require('path');
 
 module.exports = {
     arraySkip,
@@ -28,6 +29,7 @@ module.exports = {
     exitIfNot,
     throwNotImplemented,
     throws,
+    allFiles,
 }
 ;
 
@@ -142,7 +144,7 @@ function exitIfNot(lambda, message, exitLambda, value) {
 
         if (message) {
             errorMessage += message;
-            errorMessage += '; ';
+            errorMessage += '\n';
         }
 
         errorMessage += 'Called ' + summarize(lambda.name);
@@ -654,3 +656,60 @@ function loop(array, lambda, log) {
 
     consoleLog = consoleLogOld;
 })();
+
+/**
+ * Ensures that the directory contains exactly the given fileList
+ * @param {*} directory 
+ * @param {*} fileList 
+ */
+function allFiles(directory, fileList) {
+    let log = false;
+
+    if (log) consoleLog('allFiles entered');
+
+    logIndent(() => {
+        exitIfNot(isDefined)(directory);
+
+        exitIfNot(isDefined)(fileList);
+        exitIfNot(isArray)(fileList);
+        exitIfNotIsDistinct(fileList, allFiles.name);
+        loop(fileList, f => {
+            exitIfNot(isString)(f);
+        }, log);
+    
+        let files = fs.readdirSync(directory);
+    
+        // Ensure all files are present in the directory.
+        loop(files, file => {
+            if (fileList.includes(file)) {
+                return;
+            }
+    
+            if (!log) consoleLog('allFiles error');
+            consoleLog({ files });
+            consoleLog({ directory });
+            consoleLog({ file });
+            consoleLog('Directory missing file');
+            processExit();
+        }, log);
+    });
+}
+
+function exitIfNotIsDistinct(array, functionName) {
+    let log = false;
+    exitIfNot(isArray)(array);
+    exitIfNot(isString)(functionName);
+    
+    loop(range(array.length), i => {
+        loop(range(array.length), j => {
+            if (j <= i) {
+                return;
+            }
+
+            if (array[i] === array[j]) {
+                consoleLog({ array });
+                consoleLog(`${functionName}: exitIfNotIsDistinct: array contains duplicate: ` + array[i]);
+            }
+        }, log);
+    }, log)
+}
